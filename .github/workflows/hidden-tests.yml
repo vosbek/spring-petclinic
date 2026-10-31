@@ -1,0 +1,75 @@
+# Hidden tests: behaviour checks agents cannot read. They live in a private repository (vars.HIDDEN_TESTS_REPO)
+# checked out with the HIDDEN_TESTS_TOKEN secret. The log and the comment show counts and failing requirement
+# titles only; full details go to an issue in the private repository (HIDDEN_TESTS_REPORT_TOKEN). The checkout
+# is deleted before the job ends. Make "hidden-tests" required once the token is set.
+name: Hidden tests
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  hidden-tests:
+    runs-on: ubuntu-latest
+    env:
+      HIDDEN_REPO: ${{ vars.HIDDEN_TESTS_REPO }}
+    steps:
+      - name: Configured?
+        id: cfg
+        env:
+          TOKEN: ${{ secrets.HIDDEN_TESTS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$HIDDEN_REPO" ]; then echo "::warning::Hidden tests are not configured (HIDDEN_TESTS_TOKEN, vars.HIDDEN_TESTS_REPO)."; echo "ok=false" >> "$GITHUB_OUTPUT"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          repository: ${{ env.HIDDEN_REPO }}
+          token: ${{ secrets.HIDDEN_TESTS_TOKEN }}
+          path: .hidden-tests
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - if: steps.cfg.outputs.ok == 'true'
+        run: bash .fence/setup.sh
+      - name: Run (counts and requirement titles only)
+        id: run
+        if: steps.cfg.outputs.ok == 'true'
+        run: |
+          set +e
+          bash .hidden-tests/run.sh "$RUNNER_TEMP/hidden.json" > /dev/null 2>&1
+          node .hidden-tests/bin/summarize.mjs "$RUNNER_TEMP/hidden.json" > "$RUNNER_TEMP/summary.txt"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/summary.txt"
+      - name: Full details to the private repository
+        if: steps.cfg.outputs.ok == 'true' && steps.run.outputs.code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.HIDDEN_TESTS_REPORT_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          SITE: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then exit 0; fi
+          node .hidden-tests/bin/details.mjs "$RUNNER_TEMP/hidden.json" > "$RUNNER_TEMP/details.md"
+          title="$SITE#$PR: hidden test failures"
+          n=$(gh issue list --repo "$HIDDEN_REPO" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$n" ]; then gh issue edit "$n" --repo "$HIDDEN_REPO" --body-file "$RUNNER_TEMP/details.md"; else gh issue create --repo "$HIDDEN_REPO" --title "$title" --body-file "$RUNNER_TEMP/details.md"; fi
+      - name: Remove the hidden tests
+        if: always()
+        run: rm -rf .hidden-tests "$RUNNER_TEMP/hidden.json" "$RUNNER_TEMP/details.md"
+      - name: Verdict
+        if: steps.cfg.outputs.ok == 'true'
+        env:
+          CODE: ${{ steps.run.outputs.code }}
+        run: test "$CODE" = "0"

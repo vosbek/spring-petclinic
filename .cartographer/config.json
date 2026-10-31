@@ -1,0 +1,9 @@
+{
+  "historyDays": 365,
+  "maxCommits": 50000,
+  "exclude": [
+    "*src/test/*",
+    "src/main/generated/*",
+    "legacy/vendor-sdk/*"
+  ]
+}

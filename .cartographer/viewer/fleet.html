@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartographer · Fleet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0F1419;--ink-2:#2B323C;--ink-3:#4A5260;--muted:#5A6472;--faint:#6B7380;--line:#E2E5EA;--line-2:#D5DAE1;--subtle:#F7F8FA;--hover:#EEF1F5;
+--blue:#0047BB;--blue-ink:#003A99;--blue-tint:#E6EDFA;--blue-2:#5B86D6;--blue-3:#A9C0EA;--warm:#9A3412;--warm-dot:#C2410C;--hi-fg:#9F1C14;--hi-bg:#FDECEA;--md-fg:#8A3B0A;--md-bg:#FDF1E7;
+--sans:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0;background:#fff;color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}a:hover{color:var(--blue-ink)}button{font:inherit;color:inherit}:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.top{display:flex;align-items:center;gap:12px;padding:14px 32px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+main{padding:24px 32px 56px;max-width:1440px;display:flex;flex-direction:column;gap:20px}
+h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.015em}.sub{margin:0;color:var(--ink-3)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));border:1px solid var(--line);border-radius:8px}
+.stat{padding:14px 18px;display:flex;flex-direction:column;gap:2px;box-shadow:inset -1px 0 0 var(--line)}
+.stat .k,.stat .s{font-size:12px;color:var(--muted)}.stat .v{font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.search{height:34px;border:1px solid var(--line-2);border-radius:6px;padding:0 10px;font:inherit;font-size:13px;min-width:240px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--line-2);background:#fff;font-size:13px;font-weight:500;cursor:pointer}
+.chips button[aria-pressed=true]{border-color:var(--blue);background:var(--blue-tint);color:var(--blue);font-weight:600}.chips .n{color:var(--muted);margin-left:4px}
+.box{border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:1180px}
+th{position:sticky;top:0;background:var(--subtle);text-align:left;padding:9px 12px;font-size:12px;font-weight:600;color:var(--ink-3);white-space:nowrap;border-bottom:1px solid var(--line)}
+th button{border:0;background:transparent;padding:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+th[aria-sort] button{color:var(--blue)}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}tr:hover td{background:var(--subtle)}
+.r{text-align:right;font-variant-numeric:tabular-nums}
+.nm{font-weight:600;color:var(--ink)}.mono{font-family:var(--mono);font-size:12px}.muted{color:var(--muted)}.small{font-size:12px}
+.langs{display:flex;height:6px;width:140px;border-radius:3px;overflow:hidden;gap:1px;margin-top:6px}
+.pill{display:inline-flex;font-size:11px;font-weight:600;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.pill.blue{color:var(--blue);background:var(--blue-tint)}.pill.gray{color:var(--ink-2);background:var(--hover)}.pill.warm{color:var(--md-fg);background:var(--md-bg)}.pill.hi{color:var(--hi-fg);background:var(--hi-bg)}
+.spark{display:flex;align-items:flex-end;gap:1px;height:18px;width:78px}.spark span{flex:1;background:var(--blue-3);border-radius:1px}
+.up{color:var(--warm);font-weight:600}.down{color:var(--blue);font-weight:600}.flat{color:var(--ink-2);font-weight:600}
+.flags{display:flex;flex-direction:column;gap:3px}
+@media (max-width:700px){.top,main{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="5" fill="#0047BB"/><path d="M5 7.5 9 5.5l4 2 4-2v9l-4 2-4-2-4 2Z" fill="none" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 5.5v9M13 7.5v9" stroke="#fff" stroke-width="1.4"/></svg>Cartographer</span>
+  <span class="muted" style="font-size:13px">/ Fleet</span>
+</header>
+<main id="app"></main>
+<script id="fleet-data" type="application/json">/*__CARTOGRAPH_FLEET__*/null</script>
+<script>
+(function () {
+'use strict';
+var D = null; try { D = JSON.parse(document.getElementById('fleet-data').textContent); } catch (e) {}
+var app = document.getElementById('app');
+if (!D) { app.textContent = 'No fleet data. Run fleet.py.'; return; }
+function h(t, a) { var e = document.createElement(t); if (a) for (var k in a) { var v = a[k]; if (v == null || v === false) continue; if (k === 'class') e.className = v; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? '' : v); }
+  for (var i = 2; i < arguments.length; i++) add(e, arguments[i]); return e; }
+function add(e, c) { if (c == null || c === false) return; if (Array.isArray(c)) return c.forEach(function (x) { add(e, x); }); e.appendChild(c.nodeType ? c : document.createTextNode(String(c))); }
+function fmt(n) { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
+function k(n) { return n == null ? '—' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : fmt(n); }
+function hrs(x) { return x == null ? '—' : x < 48 ? x.toFixed(x < 10 ? 1 : 0) + 'h' : (x / 24).toFixed(1) + 'd'; }
+function delta(a, b) { if (b == null || a == null) return null; if (!b) return a ? { t: 'new', c: 'flat' } : null; var d = Math.round((a - b) / b * 100); return { t: (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d) + '%', c: a + b < 6 ? 'flat' : d >= 50 ? 'up' : d <= -30 ? 'down' : 'flat' }; }
+var SH = ['#0047BB', '#5B86D6', '#A9C0EA', '#6B7380', '#C9CED6'];
+var R = D.repos;
+function attention(r) {
+  var f = [];
+  if (r.checkErrors) f.push(['hi', r.checkErrors + ' model check error' + (r.checkErrors > 1 ? 's' : '')]);
+  if (r.orphaned.length) f.push(['warm', r.orphaned.length + ' orphaned area' + (r.orphaned.length > 1 ? 's' : '')]);
+  if (r.busFactor1.length && r.commits) f.push(['warm', r.busFactor1.length + ' single-owner area' + (r.busFactor1.length > 1 ? 's' : '')]);
+  if (r.hidden) f.push(['warm', r.hidden + ' hidden dependenc' + (r.hidden > 1 ? 'ies' : 'y')]);
+  if (r.cycles) f.push(['warm', r.cycles + ' dependency cycle' + (r.cycles > 1 ? 's' : '')]);
+  if (r.behind > 50) f.push(['gray', 'model ' + r.behind + ' commits behind']);
+  if (r.prs && r.prs.stale) f.push(['warm', r.prs.stale + ' stale PR' + (r.prs.stale > 1 ? 's' : '')]);
+  if (r.guard && r.guard.aboveBaseline.length) f.push(['hi', r.guard.aboveBaseline.length + ' count' + (r.guard.aboveBaseline.length > 1 ? 's' : '') + ' above baseline']);
+  if (r.guard && r.guard.expiredExceptions) f.push(['warm', r.guard.expiredExceptions + ' expired exception' + (r.guard.expiredExceptions > 1 ? 's' : '')]);
+  return f;
+}
+var state = { q: '', f: 'all', sort: 'commits', dir: -1 };
+var FILTERS = [['all', 'All', function () { return true; }], ['active', 'Active · 90d', function (r) { return r.commits > 0; }], ['dormant', 'Dormant · 180d+', function (r) { return r.daysSinceCommit >= 180; }],
+  ['curated', 'Curated model', function (r) { return r.curated; }], ['attention', 'Needs attention', function (r) { return attention(r).length > 0; }]];
+var COLS = [['name', 'Repository'], ['loc', 'Lines', 1], ['commits', 'Commits · 90d', 1], ['authors', 'Authors', 1], ['aiShare', 'AI-assisted', 1], ['fixShare', 'Fix share', 1], ['prs', 'PRs · 90d', 1], ['flags', 'Signals'], ['guard', 'Guardrails', 1], ['model', 'Model'], ['daysSinceCommit', 'Last commit', 1]];
+function val(r, key) { if (key === 'prs') return r.prs ? r.prs.merged : -1; if (key === 'model') return r.curated ? 1 : 0; if (key === 'flags') return attention(r).length; if (key === 'guard') return r.guard ? r.guard.rules : -1; return r[key]; }
+function render() {
+  app.replaceChildren();
+  var active = R.filter(function (r) { return r.commits > 0; }), curated = R.filter(function (r) { return r.curated; });
+  var commits = R.reduce(function (a, r) { return a + (r.commits || 0); }, 0);
+  var ai = R.reduce(function (a, r) { return a + (r.aiShare || 0) * (r.commits || 0) / 100; }, 0);
+  var need = R.filter(function (r) { return attention(r).length; });
+  app.appendChild(h('div', { style: 'display:flex;flex-direction:column;gap:4px' }, h('h1', null, D.title), h('p', { class: 'sub' }, R.length + ' repositories · computed from git history, import graphs and models · built ' + new Date(D.builtAt).toLocaleString())));
+  app.appendChild(h('section', { class: 'stats' },
+    stat('Repositories', R.length, active.length + ' active in 90 days'),
+    stat('Lines', k(R.reduce(function (a, r) { return a + r.loc; }, 0)), fmt(R.reduce(function (a, r) { return a + r.files; }, 0)) + ' files'),
+    stat('Commits · 90d', fmt(commits), 'across active repos'),
+    stat('AI-assisted', commits ? Math.round(100 * ai / commits) + '%' : '—', 'of commits in 90 days'),
+    stat('Curated models', curated.length, (R.length - curated.length) + ' provisional'),
+    stat('Guarded', R.filter(function (r) { return r.guard && r.guard.rules; }).length, R.reduce(function (a, r) { return a + (r.guard ? r.guard.rules : 0); }, 0) + ' rules enforced'),
+    stat('Needs attention', need.length, 'repos with a signal')));
+  var q = h('input', { class: 'search', type: 'search', placeholder: 'Filter repositories', value: state.q, 'aria-label': 'Filter repositories', oninput: function (e) { state.q = e.target.value.toLowerCase(); renderTable(); } });
+  app.appendChild(h('div', { class: 'bar' }, q, h('div', { class: 'chips', role: 'group', 'aria-label': 'Filter' }, FILTERS.map(function (f) {
+    return h('button', { type: 'button', 'aria-pressed': String(state.f === f[0]), onclick: function () { state.f = f[0]; render(); } }, f[1], h('span', { class: 'n' }, R.filter(f[2]).length));
+  }))));
+  var box = h('div', { class: 'box' }); app.appendChild(box);
+  function renderTable() {
+    var filt = FILTERS.filter(function (f) { return f[0] === state.f; })[0][2];
+    var rows = R.filter(function (r) { return filt(r) && (!state.q || (r.name + ' ' + (r.remote || '') + ' ' + r.languages.map(function (l) { return l.name; }).join(' ')).toLowerCase().indexOf(state.q) >= 0); });
+    rows.sort(function (a, b) { var x = val(a, state.sort), y = val(b, state.sort); if (x == null) x = -1e9; if (y == null) y = -1e9; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * state.dir; });
+    box.replaceChildren(h('table', null,
+      h('thead', null, h('tr', null, COLS.map(function (c) {
+        return h('th', { class: c[2] ? 'r' : '', 'aria-sort': state.sort === c[0] ? (state.dir > 0 ? 'ascending' : 'descending') : null },
+          h('button', { type: 'button', onclick: function () { if (state.sort === c[0]) state.dir *= -1; else { state.sort = c[0]; state.dir = c[0] === 'name' || c[0] === 'daysSinceCommit' ? 1 : -1; } renderTable(); } }, c[1], state.sort === c[0] ? (state.dir > 0 ? '↑' : '↓') : ''));
+      }))),
+      h('tbody', null, rows.map(function (r) {
+        var d = delta(r.commits, r.prior), flags = attention(r), mx = Math.max.apply(null, (r.weekly || [0]).concat([1]));
+        var title = r.link ? h('a', { href: r.link, class: 'nm' }, r.name) : h('span', { class: 'nm' }, r.name);
+        return h('tr', null,
+          h('td', null, title, h('div', { class: 'small muted' }, r.languages.map(function (l) { return l.name + ' ' + Math.round(l.pct) + '%'; }).slice(0, 3).join(' · ')),
+            h('div', { class: 'langs', role: 'img', 'aria-label': 'Language mix' }, r.languages.map(function (l, i) { return h('span', { style: 'flex:' + l.pct + ';background:' + SH[i] }); }))),
+          h('td', { class: 'r' }, k(r.loc), h('div', { class: 'small muted' }, fmt(r.files) + ' files')),
+          h('td', { class: 'r' }, h('div', null, fmt(r.commits), ' ', d ? h('span', { class: d.c + ' small' }, d.t) : null),
+            h('div', { style: 'display:flex;justify-content:flex-end;margin-top:4px' }, h('span', { class: 'spark', 'aria-hidden': 'true' }, (r.weekly || []).map(function (v) { return h('span', { style: 'height:' + (v ? Math.max(2, Math.round(v / mx * 18)) : 1) + 'px' + (v ? '' : ';background:#E2E5EA') }); })))),
+          h('td', { class: 'r' }, fmt(r.authors)),
+          h('td', { class: 'r' }, r.aiShare == null ? '—' : r.aiShare + '%', r.aiTools.length ? h('div', { class: 'small muted' }, r.aiTools.join(', ')) : null),
+          h('td', { class: 'r' }, r.fixShare == null ? '—' : r.fixShare + '%'),
+          h('td', { class: 'r' }, r.prs ? fmt(r.prs.merged) : '—', r.prs && (r.prs.cycle != null || r.prs.lead != null) ? h('div', { class: 'small muted' }, (r.prs.cycle != null ? 'cycle ' + hrs(r.prs.cycle) : 'lead ' + hrs(r.prs.lead))) : null),
+          h('td', null, flags.length ? h('div', { class: 'flags' }, flags.map(function (f) { return h('span', null, h('span', { class: 'pill ' + f[0] }, f[1])); })) : h('span', { class: 'muted small' }, 'None')),
+          h('td', { class: 'r' }, r.guard ? fmt(r.guard.rules) + ' rules' : h('span', { class: 'muted small' }, 'None'),
+            r.guard ? h('div', { class: 'small muted' }, [r.guard.proposed ? r.guard.proposed + ' proposed' : '', r.guard.gaps ? r.guard.gaps + ' gaps' : ''].filter(Boolean).join(' · ')) : null),
+          h('td', null, r.curated ? h('span', { class: 'pill blue' }, 'Curated') : h('span', { class: 'pill gray' }, 'Provisional'),
+            h('div', { class: 'small muted', style: 'margin-top:4px' }, r.components + ' components' + (r.coverage != null ? ' · ' + Math.round(r.coverage) + '% mapped' : '') + (r.behind ? ' · ' + r.behind + ' behind' : ''))),
+          h('td', { class: 'r small' }, r.lastCommit ? new Date(r.lastCommit).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—', r.daysSinceCommit != null ? h('div', { class: 'muted' }, r.daysSinceCommit + 'd ago') : null));
+      }))));
+  }
+  renderTable();
+}
+function stat(k, v, s) { return h('div', { class: 'stat' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, v), h('span', { class: 's' }, s)); }
+render();
+})();
+</script>
+</body>
+</html>

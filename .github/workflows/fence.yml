@@ -1,0 +1,60 @@
+# The fence on every pull request, outside any agent. One sticky comment per pull request, by category.
+# Make "fence" a required check on the default branch. .fence/ and this file change only with a code owner.
+name: Fence
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: fence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  fence:
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Install the repository's tools
+        run: bash .fence/setup.sh
+      - name: Codebase facts for the structure rules
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          python3 .cartographer/bin/collect.py > /dev/null
+          python3 .cartographer/bin/graph.py > /dev/null
+      - name: Fence
+        run: node .fence/bin/fence.mjs --ci --base "origin/$BASE_REF" --md .cache/fence/comment.md
+      - name: Comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p .cache/fence
+          [ -f .cache/fence/comment.md ] || echo "## Fence: BLOCKED (the fence did not finish; see the run)" > .cache/fence/comment.md
+          { echo "<!-- fence -->"; cat .cache/fence/comment.md; } > .cache/fence/body.md
+          cat .cache/fence/comment.md >> "$GITHUB_STEP_SUMMARY"
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- fence -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@.cache/fence/body.md > /dev/null
+          else gh api "repos/$REPO/issues/$PR/comments" -F body=@.cache/fence/body.md > /dev/null; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fence-${{ github.event.pull_request.number }}
+          path: .cache/fence/
+          retention-days: 14

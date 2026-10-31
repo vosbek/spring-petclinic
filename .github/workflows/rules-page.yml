@@ -1,0 +1,82 @@
+# The rules page: every guard rule, fence check and exception in this repository, the evidence for each, who
+# approves changes to them, and what is waiting on a person. Rebuilt from the repository's own files on every
+# merge to the default branch, so it cannot drift from them. The fence and guard rules decide; this only shows.
+# It publishes to GitHub Pages when a person has set Settings > Pages > Source to "GitHub Actions"; otherwise the
+# page is kept as a build artifact of each run.
+name: Rules page
+on:
+  push:
+    branches: [main, master]
+  # A pull request that changes the rules builds the page it would publish, as an artifact for the reviewer.
+  pull_request:
+    paths:
+      - ".cartographer/guardrails*.json"
+      - ".cartographer/config.json"
+      - ".fence/**"
+      - ".github/CODEOWNERS"
+      - "ONBOARDING.md"
+      - ".github/workflows/rules-page.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rules-page-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      pages: read
+    outputs:
+      pages: ${{ steps.pages.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Is GitHub Pages set to publish from Actions?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          type=$(gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null || true)
+          echo "enabled=$([ "$type" = workflow ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Pull requests labelled for a person
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p .cache
+          gh api "repos/$REPO/issues?state=open&per_page=100&labels=$(printf %s 'fence: needs a person' | jq -sRr @uri)" \
+            --jq '[.[] | select(.pull_request) | {number, title, url: .html_url}]' > .cache/waiting.json || echo "[]" > .cache/waiting.json
+      - name: Build the page
+        env:
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          python3 .cartographer/bin/rules_page.py --out _site/index.html --waiting .cache/waiting.json --repo-url "$REPO_URL"
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import re
+          page = open("_site/index.html").read()
+          nums = re.findall(r"<b>([^<]+)</b>([^<]+)</a>", page)
+          print("Rules page: " + ", ".join(f"{n} {label.strip()}" for n, label in nums))
+          PY
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  publish:
+    if: github.event_name != 'pull_request' && needs.build.outputs.pages == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

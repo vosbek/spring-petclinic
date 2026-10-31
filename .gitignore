@@ -46,3 +46,9 @@ out/
 _site/
 *.css
 !petclinic.css
+.cache/
+.hidden-tests/
+!.cartographer/bin/
+!.fence/bin/
+!.cartographer/viewer/
+!.cartographer/viewer/**
