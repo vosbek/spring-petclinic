@@ -10,6 +10,9 @@ on:
     paths:
       - 'k8s/**'
 
+permissions:
+  contents: read
+
 jobs:
   deploy-and-test-cluster:
     runs-on: ubuntu-latest
