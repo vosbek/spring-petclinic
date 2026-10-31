@@ -1407,6 +1407,7 @@ def propose(home, rules, by_id=None):
     path = os.path.join(home, "guardrails.proposed.json")
     prop = carto.load(path) or {"schemaVersion": 1, "rules": []}
     have = {r["id"] for r in prop["rules"]} | {r["id"] for r in (carto.load(os.path.join(home, "guardrails.json")) or {}).get("rules", [])}
+    have |= {x.get("id") for x in prop.get("rejected", [])}
     n = 0
     for r in rules:
         if r["id"] in have:
@@ -1435,7 +1436,11 @@ def accept(home, accept_ids, reject_ids):
             r.setdefault("added", dt.date.today().isoformat())
             cfg["rules"] = [x for x in cfg["rules"] if x["id"] != r["id"]] + [r]
             moved.append(r["id"])
-        elif r["id"] not in reject_ids:
+        elif r["id"] in reject_ids:
+            # Remembered, so --suggest does not propose it again; the decision record is the pull request that removed it.
+            prop.setdefault("rejected", [])
+            prop["rejected"] = [x for x in prop["rejected"] if x.get("id") != r["id"]] + [{"id": r["id"], "rejected": dt.date.today().isoformat()}]
+        else:
             keep.append(r)
     prop["rules"] = keep
     carto.save(gpath, cfg, pretty=True)
