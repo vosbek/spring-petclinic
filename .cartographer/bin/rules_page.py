@@ -36,6 +36,7 @@ CARBON = os.path.join(HERE, "..", "viewer", "carbon-rules.css")
 
 sys.path.insert(0, HERE)
 from guard import DEFAULT_SEVERITY, REPLAYABLE, enforced_label  # noqa: E402
+import rules_model  # noqa: E402
 
 # The fence's built-in checks: id -> (category, what it requires). Titles as factory/fence/checks.mjs reports them.
 BUILTINS = {
@@ -292,7 +293,15 @@ def build(repo, fence_report=None, waiting=None, repo_url=None):
              f'<nav aria-label="Breadcrumb"><ol class="cds--breadcrumb cds--breadcrumb--no-trailing-slash">{crumb}<li class="cds--breadcrumb-item"><span>Rules</span></li></ol></nav>'
              f'<h1 class="sf-title">Rules and approvals</h1><p class="sf-meta">{meta}</p></div>')
 
-    tabs = [("waiting", "Waiting on a person", f"{waiting_n} item{'s' if waiting_n != 1 else ''}"),
+    order = ["style", "practices", "patterns", "security", "performance", "structure", "tests", "database"]
+    model = {"n_rules": len(rules), "n_props": len(props), "n_checks": len(checks), "checks": checks,
+             "categories": sorted({c["category"] for c in checks}, key=lambda c: order.index(c) if c in order else 99),
+             "fixer_ids": [c["id"] for c in checks if c["fixer"]],
+             "replay_commits": max([r.get("_replay", {}).get("commits") or 0 for r in proposed.get("rules", [])] or [0]),
+             "n_judgment": len(config.get("judgment", [])), "has_package_json": os.path.exists(os.path.join(repo, "package.json")),
+             "has_verification": os.path.isdir(os.path.join(repo, "verification")),
+             "hidden_workflow": os.path.exists(os.path.join(repo, ".github", "workflows", "hidden-tests.yml"))}
+    tabs = [("how", "How it works", "the model"), ("waiting", "Waiting on a person", f"{waiting_n} item{'s' if waiting_n != 1 else ''}"),
             ("guard", "Guard rules", f"{len(rules)} in force"),
             ("fence", "Fence checks", f"{len(checks)} checks" if listed else "not listed"),
             ("exceptions", "Exceptions", f"{len(exceptions)}"),
@@ -304,6 +313,8 @@ def build(repo, fence_report=None, waiting=None, repo_url=None):
                        f'<div class="cds--tabs__nav-item-label-wrapper"><span class="cds--tabs__nav-item-label">{e(lab)}</span></div>'
                        f'<div class="cds--tabs__nav-item-secondary-label">{e(sec)}</div></a>' for t, lab, sec in tabs)
              + '</div></div><div class="sf-panels">')
+
+    O.append('<section id="how" class="sf-panel" role="tabpanel">' + rules_model.section(model, table, tag) + "</section>")
 
     # Waiting on a person
     O.append('<section id="waiting" class="sf-panel" role="tabpanel">')
@@ -415,7 +426,7 @@ def build(repo, fence_report=None, waiting=None, repo_url=None):
 
 # Layout on top of Carbon: spacing, the page heading in Carbon's type scale, tab panels and expandable rows.
 CSS = """
-body{margin:0}
+html{color-scheme:light}body{margin:0;background:#ffffff}
 .sf-root{background:var(--cds-background);color:var(--cds-text-primary);min-height:100vh;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif}
 .sf-main{max-width:84rem;margin:0 auto;padding-block:5rem 3rem;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 @media (min-width:42rem){.sf-main{padding-left:max(2rem,env(safe-area-inset-left,0px));padding-right:max(2rem,env(safe-area-inset-right,0px))}}
@@ -443,12 +454,8 @@ body{margin:0}
 """
 
 # Tabs follow the address (#waiting, #guard, ...), so a link can open one; without script every section shows.
-# The theme follows the viewer: Carbon's White, or Gray 100 for dark.
-JS = """(function(){var root=document.getElementById('sf-root');function theme(){var t=document.documentElement.getAttribute('data-theme');
-var dark=t==='dark'||(t!=='light'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);root.classList.toggle('cds--g100',dark);root.classList.toggle('cds--white',!dark)}
-theme();if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',theme);
-new MutationObserver(theme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-var tabs=[].slice.call(document.querySelectorAll('[data-tab]'));var panels=[].slice.call(document.querySelectorAll('.sf-panel'));
+# Always Carbon's White theme: the page stays light whatever the viewer's setting.
+JS = """(function(){var tabs=[].slice.call(document.querySelectorAll('[data-tab]'));var panels=[].slice.call(document.querySelectorAll('.sf-panel'));
 function show(){var id=(location.hash||'').slice(1);if(!panels.some(function(p){return p.id===id}))id=panels[0]&&panels[0].id;
 panels.forEach(function(p){p.hidden=p.id!==id});tabs.forEach(function(t){var on=t.getAttribute('data-tab')===id;t.classList.toggle('cds--tabs__nav-item--selected',on);t.setAttribute('aria-selected',on?'true':'false')})}
 window.addEventListener('hashchange',show);show();if(location.hash)window.scrollTo(0,0);
@@ -472,7 +479,7 @@ def carbon_css():
 def page(title, body):
     return ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-            f"<title>{e(title)}</title>\n{FONTS}\n<style>{carbon_css()}</style>\n<style>{CSS}</style>\n</head>\n<body>\n"
+            f"<title>{e(title)}</title>\n{FONTS}\n<style>{carbon_css()}</style>\n<style>{CSS}{rules_model.CSS}</style>\n</head>\n<body>\n"
             f'<div id="sf-root" class="sf-root cds--white">\n{body}\n</div>\n<script>{JS}</script>\n</body>\n</html>\n')
 
 
