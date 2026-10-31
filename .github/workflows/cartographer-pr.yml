@@ -1,0 +1,85 @@
+# Cartographer PR lens + guardrails: explains every pull request against the repo's model
+# (components touched, model drift, missed co-changes, new dependencies, interface/schema
+# changes, suggested reviewers) as one updatable comment, then fails the check when a
+# blocking rule in .cartographer/guardrails.json is broken. Make "guardrails" a required check.
+name: Cartographer PR lens
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: cartographer-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  lens:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # history is the input: coupling, ownership, hotspots
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Analyze
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}   # passed via env, never interpolated into the script
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          python3 .cartographer/bin/collect.py
+          python3 .cartographer/bin/graph.py
+          python3 .cartographer/bin/pr.py --base "origin/$BASE_REF" --head HEAD --id "$PR_NUMBER" --title "$PR_TITLE" --markdown cartographer.md
+          python3 .cartographer/bin/build.py || true    # viewer artifact; a model check error is reported in the comment instead
+      - name: Upload viewer
+        uses: actions/upload-artifact@v4
+        with:
+          name: cartographer-pr-${{ github.event.pull_request.number }}
+          path: .cartographer/dist/cartograph.html
+          retention-days: 14
+      - name: Comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          marker='<!-- cartographer -->'
+          id=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@cartographer.md > /dev/null
+          else
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@cartographer.md > /dev/null
+          fi
+  guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Guardrails
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          python3 .cartographer/bin/collect.py > /dev/null
+          python3 .cartographer/bin/graph.py > /dev/null
+          python3 .cartographer/bin/guard.py --base "origin/$BASE_REF" --head HEAD --markdown guard.md
+      - name: Summary
+        if: always()
+        run: |
+          test -f guard.md && cat guard.md >> "$GITHUB_STEP_SUMMARY" || true
+          { echo; echo '#### Guardrail activity'; echo '```'; python3 .cartographer/bin/guard.py --log --last 20; echo '```'; } >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload guardrail log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardrail-log-${{ github.event.pull_request.number }}
+          path: .cartographer/log/events.jsonl
+          if-no-files-found: ignore
+          retention-days: 30

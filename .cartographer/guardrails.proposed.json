@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "layering",
+      "type": "layering",
+      "severity": "block",
+      "description": "Components depend downward through the model's layers: Web → Domain → Platform → Data.",
+      "source": "suggested",
+      "added": "2026-10-30",
+      "_why": "The model orders 4 layers; this keeps new code from importing upward.",
+      "_replay": {
+        "replayable": true,
+        "commits": 172,
+        "fired": 0,
+        "followedByFixOrRevert": 0,
+        "hitRatePct": null,
+        "baseRatePct": 6
+      }
+    },
+    {
+      "id": "no-new-cycles",
+      "type": "no-new-cycles",
+      "severity": "block",
+      "description": "No import may close a dependency cycle between components.",
+      "source": "suggested",
+      "added": "2026-10-30",
+      "_why": "Cycles make components impossible to change or release separately.",
+      "_replay": {
+        "replayable": true,
+        "commits": 172,
+        "fired": 0,
+        "followedByFixOrRevert": 0,
+        "hitRatePct": null,
+        "baseRatePct": 6
+      }
+    },
+    {
+      "id": "pinned-snippets",
+      "type": "pinned-snippets",
+      "severity": "block",
+      "description": "Code the model pins as key must not change without the model.",
+      "source": "suggested",
+      "added": "2026-10-30",
+      "_why": "5 snippets are pinned; changes to them silently invalidate the map.",
+      "_replay": {
+        "replayable": false,
+        "commits": null,
+        "fired": null,
+        "followedByFixOrRevert": null,
+        "hitRatePct": null,
+        "baseRatePct": null
+      }
+    },
+    {
+      "id": "interface-change",
+      "type": "interface-change",
+      "severity": "warn",
+      "on": "removed",
+      "description": "Removing or changing a declared interface (route, tool, topic) needs its contract updated.",
+      "source": "suggested",
+      "added": "2026-10-30",
+      "_why": "45 interface declarations found.",
+      "_replay": {
+        "replayable": true,
+        "commits": 172,
+        "fired": 1,
+        "followedByFixOrRevert": 0,
+        "hitRatePct": 0,
+        "baseRatePct": 6
+      }
+    },
+    {
+      "id": "tests-required",
+      "type": "tests-required",
+      "severity": "warn",
+      "minLines": 30,
+      "description": "A code change of 30+ lines comes with a test change.",
+      "source": "suggested",
+      "added": "2026-10-30",
+      "_why": "20 test files import production code here, so the convention exists.",
+      "_replay": {
+        "replayable": true,
+        "commits": 172,
+        "fired": 9,
+        "followedByFixOrRevert": 0,
+        "hitRatePct": 0,
+        "baseRatePct": 6
+      }
+    },
+    {
+      "id": "max-size",
+      "type": "max-size",
+      "severity": "warn",
+      "max": 1000,
+      "description": "Changes stay reviewable.",
+      "source": "suggested",
+      "added": "2026-10-30",
+      "_why": "Large changes get shallow reviews.",
+      "_replay": {
+        "replayable": true,
+        "commits": 172,
+        "fired": 1,
+        "followedByFixOrRevert": 0,
+        "hitRatePct": 0,
+        "baseRatePct": 6
+      }
+    },
+    {
+      "id": "ratchet",
+      "type": "ratchet",
+      "severity": "block",
+      "description": "Structural debt never grows: layer violations, dependency cycles, dependencies not in the model, hidden dependencies, components no test imports, model check errors.",
+      "source": "suggested",
+      "added": "2026-10-30",
+      "_why": "Locks today's counts so they can only go down. Run --baseline after accepting.",
+      "_replay": {
+        "replayable": false,
+        "commits": null,
+        "fired": null,
+        "followedByFixOrRevert": null,
+        "hitRatePct": null,
+        "baseRatePct": null
+      }
+    }
+  ]
+}

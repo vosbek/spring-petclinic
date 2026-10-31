@@ -1,0 +1,122 @@
+# The gardener: when the fence fails, run the safe fixers, run every check again, and commit only when a
+# fixer changed tracked code and nothing that passed now fails. What is left gets "fence: needs a person".
+# Pull requests from this repository only (no outside code runs with a write token). Nightly: the same on
+# the default branch, as a pull request. Set GARDENER_TOKEN so the fence runs again on the gardener's commits.
+# The two rules below were found by a TLA+ model of this job (see the template's verification/gardener).
+name: Gardener
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+concurrency:
+  group: gardener-${{ github.event.pull_request.number || 'nightly' }}
+  cancel-in-progress: true
+jobs:
+  pull-request:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: ${{ github.base_ref }}
+      HEAD_REF: ${{ github.head_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GARDENER_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - run: bash .fence/setup.sh
+      - name: Codebase facts
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          python3 .cartographer/bin/collect.py > /dev/null
+          python3 .cartographer/bin/graph.py > /dev/null
+      - name: Fence with fixers
+        id: fence
+        run: |
+          set +e
+          node .fence/bin/fence.mjs --ci --fix --base "origin/$BASE_REF" --md .cache/fence/comment.md
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Commit the fixes
+        run: |
+          fixed=$(node -p "require('./.cache/fence/report.json').fixed.join(', ')")
+          regressions=$(node -p "require('./.cache/fence/report.json').regressions.join(', ')")
+          # Only what a fixer changed counts; the fence's own reports live in .cache/ (git-ignored).
+          changes=$(git status --porcelain -- . ':(exclude).cache')
+          if [ -z "$fixed" ] || [ -z "$changes" ]; then echo "Nothing a fixer changed."; exit 0; fi
+          if [ -n "$regressions" ]; then echo "::warning::A fixer broke $regressions, so nothing is committed."; exit 0; fi
+          git config user.name "fence-gardener"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- . ':(exclude).cache'
+          git commit -m "Gardener: $fixed" -m "Fixers run by the fence gardener. Every fence check ran again after them."
+          git push origin "HEAD:$HEAD_REF"
+      - name: Label
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          CODE: ${{ steps.fence.outputs.code }}
+        run: |
+          label="fence: needs a person"
+          gh label create "$label" --repo "$REPO" --color B60205 --description "The fence failed and the gardener could not fix it" 2>/dev/null || true
+          if [ "$CODE" = "0" ]; then gh pr edit "$PR" --repo "$REPO" --remove-label "$label" 2>/dev/null || true; exit 0; fi
+          gh pr edit "$PR" --repo "$REPO" --add-label "$label"
+  nightly:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GARDENER_TOKEN || github.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - run: bash .fence/setup.sh
+      - name: Fence with fixers
+        id: fence
+        run: |
+          set +e
+          python3 .cartographer/bin/collect.py > /dev/null; python3 .cartographer/bin/graph.py > /dev/null
+          node .fence/bin/fence.mjs --ci --fix --base HEAD~1 --md .cache/fence/comment.md
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Open a pull request with the fixes
+        env:
+          GH_TOKEN: ${{ secrets.GARDENER_TOKEN || github.token }}
+        run: |
+          changes=$(git status --porcelain -- . ':(exclude).cache')
+          regressions=$(node -p "require('./.cache/fence/report.json').regressions.join(', ')")
+          if [ -z "$changes" ] || [ -n "$regressions" ]; then echo "Nothing to propose."; exit 0; fi
+          branch="gardener/nightly-$(date -u +%F)"
+          git config user.name "fence-gardener"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -A -- . ':(exclude).cache'
+          git commit -m "Gardener: nightly fixes"
+          git push -f origin "$branch"
+          gh pr create --head "$branch" --title "Gardener: nightly fixes" --body-file .cache/fence/comment.md || true

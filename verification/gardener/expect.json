@@ -1,0 +1,20 @@
+{
+  "spec": "GardenerRun.tla",
+  "view": "view.ts",
+  "covers": [
+    ".github/workflows/gardener.yml: pull-request job (Fence with fixers, Commit the fixes)",
+    ".fence/bin/fence.mjs: --fix, --md, report.json fixed and regressions"
+  ],
+  "runs": {
+    "GardenerRun.cfg": {
+      "breaks": [],
+      "models": "the workflow as installed: the comment file under .cache/"
+    },
+    "GardenerRunRootReport.cfg": {
+      "breaks": [
+        "CommitsOnlyFixes"
+      ],
+      "models": "the comment file in the repository root (the first version): commits only its report"
+    }
+  }
+}

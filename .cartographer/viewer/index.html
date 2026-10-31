@@ -1,0 +1,1746 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartographer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F1419; --ink-2:#2B323C; --ink-3:#4A5260; --muted:#5A6472; --faint:#6B7380;
+  --line:#E2E5EA; --line-2:#D5DAE1; --subtle:#F7F8FA; --hover:#EEF1F5;
+  --blue:#0047BB; --blue-ink:#003A99; --blue-tint:#E6EDFA; --blue-wash:#F3F7FE; --blue-line:#B8CCF0; --blue-2:#5B86D6; --blue-3:#A9C0EA;
+  --hi-fg:#9F1C14; --hi-bg:#FDECEA; --md-fg:#8A3B0A; --md-bg:#FDF1E7; --lo-fg:#2B323C; --lo-bg:#EEF1F5;
+  --warm:#9A3412; --warm-dot:#C2410C; --warm-wash:#FFF8F2; --warm-line:#F1D7C2;
+  --add:#1F6F43; --del:#9F1C14;
+  --sans:'IBM Plex Sans','Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}a:hover{color:var(--blue-ink)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+code,.mono{font-family:var(--mono);font-size:12px}
+h1,h2,h3{margin:0;font-weight:600}
+h1{font-size:22px;line-height:1.25;letter-spacing:-.015em}
+h2{font-size:16px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.app{display:flex;min-height:100vh}
+/* sidebar */
+.side{flex:0 0 232px;background:var(--subtle);border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.repo-card{border:1px solid var(--line);background:#fff;border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.repo-card .k{font-size:12px;color:var(--muted)}.repo-card .v{font-weight:600;word-break:break-word}
+.navgroup{display:flex;flex-direction:column;gap:2px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.navgroup .eyebrow{padding:0 8px 6px}
+.navlink{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:5px;color:var(--ink-2)}
+.navlink:hover{background:var(--hover);color:var(--ink)}
+.navlink[aria-current]{background:var(--blue-tint);color:var(--blue);font-weight:600}
+.navlink .count{margin-left:auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.side-foot{margin-top:auto;border-top:1px solid var(--line);padding:12px 8px 0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.side-foot .behind{color:#8A4B08;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:4px;background:var(--warm-dot);display:inline-block;flex:0 0 8px}
+/* top bar */
+.mainwrap{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;padding:12px 32px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:5}
+.crumbs{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.crumbs a{color:var(--muted)}.crumbs a:hover{color:var(--ink)}.crumbs .sep{color:#9AA1AC}.crumbs .cur{color:var(--ink)}
+.searchbtn{flex:1 1 280px;max-width:520px;margin-left:auto;height:36px;border:1px solid var(--line-2);border-radius:6px;background:#fff;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;color:var(--faint);font-size:13px;cursor:pointer;text-align:left}
+.searchbtn:hover{border-color:#B8BFC9}
+.kbd{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--line-2);border-radius:4px;padding:1px 5px;background:var(--subtle)}
+.btn{height:36px;padding:0 14px;border:1px solid var(--line-2);border-radius:6px;background:#fff;font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:#B8BFC9;color:var(--ink)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}.btn.primary:hover{background:var(--blue-ink);color:#fff}
+.iconbtn{width:32px;height:32px;padding:0;justify-content:center}
+main{padding:24px 32px 56px;display:flex;flex-direction:column;gap:24px;width:100%;max-width:1280px}
+/* primitives */
+.lede{margin:0;max-width:780px;font-size:15px;line-height:1.6;color:var(--ink-2)}
+.sub{margin:0;font-size:14px;color:var(--ink-3)}
+.muted{color:var(--muted)}.small{font-size:12px}.s13{font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.between{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px 12px}
+.cols{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.col-main{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:28px}
+.col-side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.section{display:flex;flex-direction:column;gap:10px}
+.box{border:1px solid var(--line);border-radius:8px;background:#fff}
+.box.pad{padding:12px 16px}
+.list{list-style:none;margin:0;padding:0}
+.list>li+li{border-top:1px solid var(--line)}
+.rowlink{display:flex;gap:14px;align-items:flex-start;padding:12px 16px;color:var(--ink)}
+.rowlink:hover{background:var(--subtle);color:var(--ink)}
+.pill{display:inline-flex;align-items:center;font-size:12px;color:var(--ink-2);border:1px solid var(--line-2);border-radius:4px;padding:1px 8px;background:#fff;white-space:nowrap}
+.pill.blue{color:var(--blue);background:var(--blue-tint);border-color:transparent;font-weight:500}
+.pill.gray{background:var(--hover);border-color:transparent;font-weight:500}
+.sev{font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:2px 6px;white-space:nowrap;display:inline-block}
+.sev.high{color:var(--hi-fg);background:var(--hi-bg)}.sev.medium{color:var(--md-fg);background:var(--md-bg)}.sev.low{color:var(--lo-fg);background:var(--lo-bg)}
+.kind{font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:1px 6px;color:var(--ink-2);background:var(--hover);white-space:nowrap}
+.kind.gotcha{color:var(--md-fg);background:var(--md-bg)}.kind.invariant{color:var(--hi-fg);background:var(--hi-bg)}.kind.entry-point{color:var(--blue);background:var(--blue-tint)}
+.num{font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));border:1px solid var(--line);border-radius:8px}
+.stat{padding:16px 20px;display:flex;flex-direction:column;gap:4px;box-shadow:inset -1px 0 0 var(--line)}
+.stat .v{font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat .k,.stat .s{font-size:12px;color:var(--muted)}
+.bar{height:4px;background:var(--hover);border-radius:2px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--blue);border-radius:2px}
+.bar.t6{height:6px}
+.numcircle{flex:0 0 24px;height:24px;border-radius:12px;border:1px solid var(--blue-line);color:var(--blue);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;background:#fff}
+.numcircle.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);border:1px solid var(--line-2);background:#fff;border-radius:5px;padding:3px 10px}
+a.chip:hover{border-color:var(--blue);color:var(--blue)}
+.chip.ext{background:var(--subtle)}
+.riskdot{width:6px;height:6px;border-radius:3px;background:var(--warm-dot);display:inline-block}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+.t th{background:var(--subtle);text-align:left;padding:9px 16px;font-size:12px;font-weight:600;color:var(--ink-3);white-space:nowrap}
+.t td{padding:10px 16px;border-top:1px solid var(--line);vertical-align:top}
+.t tr:hover td{background:var(--subtle)}
+.t .r{text-align:right;font-variant-numeric:tabular-nums}
+.scrollx{overflow-x:auto}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:6px;padding:2px;background:var(--subtle)}
+.seg button{height:30px;padding:0 12px;border:0;border-radius:4px;background:transparent;font-size:13px;color:var(--ink-3);cursor:pointer}
+.seg button[aria-pressed=true]{background:#fff;box-shadow:0 0 0 1px var(--line-2);font-weight:600;color:var(--ink)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{height:40px;padding:0 12px;border:0;background:transparent;font-size:13px;font-weight:500;color:var(--ink-3);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.tabs button[aria-selected=true]{font-weight:600;color:var(--blue);box-shadow:inset 0 -2px 0 var(--blue)}
+.tabs .c{font-size:11px;color:var(--ink-3);background:var(--hover);border-radius:8px;padding:0 6px}
+.filterchips{display:flex;gap:6px;flex-wrap:wrap}
+.filterchips button{height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--line-2);background:#fff;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink)}
+.filterchips button[aria-pressed=true]{border-color:var(--blue);background:var(--blue-tint);color:var(--blue);font-weight:600}
+.filterchips .n{color:var(--muted);font-variant-numeric:tabular-nums;margin-left:4px}
+.filterchips button[aria-pressed=true] .n{color:var(--blue)}
+.callout{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:14px 16px;border:1px solid var(--warm-line);background:var(--warm-wash);border-radius:8px}
+.callout.text{display:block;line-height:1.6}.callout.text code{padding:1px 6px}
+.callout.info{border-color:var(--blue-line);background:var(--blue-wash)}
+.callout code{background:#fff;border:1px solid var(--warm-line);border-radius:6px;padding:6px 10px;color:var(--ink-2)}
+.empty{padding:28px 20px;color:var(--ink-3);font-size:13px}
+dl.facts{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;padding:8px 16px}
+dl.facts dt{font-size:12px;color:var(--muted)}dl.facts dd{margin:0;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+dl.facts dd small{font-size:12px;font-weight:500;color:var(--ink-3)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:40px}.spark span{flex:1 1 0;border-radius:2px 2px 0 0;background:var(--blue-3)}
+.spark span.cur{background:var(--blue)}
+.ownrow{display:grid;grid-template-columns:96px minmax(0,1fr) 40px;gap:10px;align-items:center;font-size:13px}
+.ownrow .name{font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deprow{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--ink);padding:3px 0}
+.deprow:hover{color:var(--blue)}
+.deprow .l{color:var(--muted);text-align:right}
+/* architecture */
+.archmap{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.lane{display:flex;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:-1px}
+.lane.external{background:var(--subtle)}
+.lane-h{flex:0 0 148px;padding:16px;display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--hover)}
+.lane-h .d{font-size:12px;color:var(--muted)}
+.lane-b{flex:1 1 320px;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(208px,100%),1fr));gap:12px}
+.node{text-align:left;cursor:pointer;background:#fff;border:1px solid var(--line-2);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:92px;transition:opacity .12s,border-color .12s}
+.node:hover{border-color:var(--blue)}
+.node.sel{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue);background:var(--blue-wash)}
+.node.rel{border-color:var(--blue)}
+.node.dim{opacity:.5}
+.node .nm{font-size:14px;font-weight:600}.node .kd{font-size:12px;color:var(--muted)}
+.node .mt{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.node .rel-tag{flex:0 0 auto;font-size:11px;font-weight:600;color:var(--blue);background:var(--blue-tint);border-radius:4px;padding:1px 6px;white-space:nowrap}
+.node .rk{font-size:11px;font-weight:600;color:var(--md-fg);white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 20px;padding:10px 16px;border-top:1px solid var(--line);background:var(--subtle);font-size:12px;color:var(--ink-3);align-items:center}
+.panel>div{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.panel>div:last-child{border-bottom:0}
+.filter-in{height:32px;border:1px solid var(--line-2);border-radius:6px;padding:0 10px;font:inherit;font-size:13px;min-width:200px}
+.filter-in:focus{outline:2px solid var(--blue);outline-offset:-1px}
+/* code */
+.codecard{border:1px solid var(--line-2);border-radius:8px;overflow:hidden;background:#fff}
+.codehead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--subtle)}
+.codehead .t{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600}
+.codewhy{margin:0;padding:12px 16px;font-size:13px;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.codebody{tab-size:4;-moz-tab-size:4;overflow-x:auto;padding:10px 0;font-family:var(--mono);font-size:13px;line-height:22px}
+.cl{display:flex;min-width:max-content}
+.cl.ann{background:var(--blue-wash)}.cl.on{background:#DCE7FB}
+.gut{flex:0 0 64px;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-right:14px;color:var(--faint);user-select:none;font-variant-numeric:tabular-nums}
+.mk{width:16px;height:16px;border-radius:8px;background:#fff;color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);font-family:var(--sans);font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.cl.on .mk{background:var(--blue);color:#fff}
+.src{white-space:pre;padding-right:16px}
+.tk-k{color:#0047BB}.tk-s{color:#8A4B08}.tk-c{color:#5A6472;font-style:italic}.tk-a{color:#5B3FA8}.tk-n{color:#8A4B08}
+.anns{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.anns button{width:100%;text-align:left;border:0;background:#fff;padding:12px 16px;display:flex;gap:12px;cursor:pointer;border-top:1px solid var(--hover)}
+.anns li:first-child button{border-top:0}
+.anns button:hover{background:var(--subtle)}.anns button[aria-pressed=true]{background:var(--blue-wash)}
+.anns .badge{flex:0 0 20px;height:20px;border-radius:10px;background:var(--blue-tint);color:var(--blue);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.anns button[aria-pressed=true] .badge{background:var(--blue);color:#fff}
+.drift{font-size:12px;font-weight:500;border-radius:4px;padding:1px 8px}
+.drift.fresh{color:var(--add);background:#E9F5EE}.drift.moved{color:var(--ink-2);background:var(--hover)}.drift.stale,.drift.missing{color:var(--md-fg);background:var(--md-bg)}
+/* flows */
+.lanepath{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--subtle)}
+.lanepath .chip.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+.steps button{width:100%;text-align:left;border:0;background:#fff;padding:14px 16px;display:flex;gap:12px;cursor:pointer}
+.steps button:hover{background:var(--subtle)}.steps button[aria-pressed=true]{background:var(--blue-wash)}
+/* changes */
+.chart{display:flex;gap:10px}
+.yax{display:flex;flex-direction:column;justify-content:space-between;height:160px;font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.plot{height:160px;display:flex;align-items:flex-end;gap:6px;border-bottom:1px solid #C9CED6;background:linear-gradient(var(--hover),var(--hover)) 0 0/100% 1px no-repeat,linear-gradient(var(--hover),var(--hover)) 0 50%/100% 1px no-repeat}
+.plot .b{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
+.plot .b span:first-child{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.plot .b span:last-child{width:100%;max-width:44px;background:var(--blue-2);border-radius:3px 3px 0 0}
+.plot .b.peak span:last-child{background:var(--blue)}
+.xax{display:flex;gap:6px;font-size:11px;color:var(--muted)}.xax span{flex:1 1 0;text-align:center}
+.minis{display:flex;align-items:flex-end;gap:2px;height:20px;width:120px}.minis span{flex:1 1 0;border-radius:1px;background:#8FA3BF}
+.minis.hot span{background:var(--warm-dot)}
+.up{color:var(--warm);font-weight:600}.down{color:var(--blue);font-weight:600}.flat{color:var(--ink-2);font-weight:600}
+/* palette */
+dialog.pal{border:1px solid var(--line-2);border-radius:10px;padding:0;width:min(640px,calc(100vw - 32px));box-shadow:0 16px 48px rgba(15,20,25,.18);margin-top:12vh}
+dialog.pal::backdrop{background:rgba(15,20,25,.28)}
+.pal input{width:100%;height:48px;border:0;border-bottom:1px solid var(--line);padding:0 16px;font:inherit;font-size:15px;outline:none}
+.pal ul{list-style:none;margin:0;padding:6px;max-height:min(60vh,480px);overflow-y:auto}
+.pal li button{width:100%;text-align:left;border:0;background:transparent;border-radius:6px;padding:8px 10px;display:flex;gap:12px;align-items:center;cursor:pointer}
+.pal li button[aria-selected=true]{background:var(--blue-tint)}
+.pal .ty{flex:0 0 78px;font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.pal .nm{font-weight:500}.pal .ds{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:auto;max-width:45%}
+.pal .foot{display:flex;gap:14px;padding:8px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+
+/* matrix */
+.t.matrix{width:auto;border-collapse:separate;border-spacing:3px;font-size:12px;margin:4px}
+.t.matrix th{background:#fff;padding:0 10px 0 4px;text-align:right}
+.t.matrix th.mx-col{height:130px;vertical-align:bottom;padding:0 0 6px;width:36px;text-align:center}
+.matrix th.mx-col span{display:inline-block;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-weight:500;color:var(--ink-2);max-height:118px;overflow:hidden;text-overflow:ellipsis}
+.t.matrix td.mx{width:36px;height:32px;padding:0;text-align:center;vertical-align:middle;border:0;border-radius:3px;background:var(--subtle);color:#fff;font-weight:600;font-variant-numeric:tabular-nums}
+.t.matrix td.mx.self{background:repeating-linear-gradient(45deg,#F7F8FA,#F7F8FA 3px,#EEF1F5 3px,#EEF1F5 6px)}
+.t.matrix td.mx.unmodeled{box-shadow:inset 0 0 0 2px #0F1419}
+.t.matrix tr:hover td.mx{filter:brightness(.97)}
+/* signals */
+.sig{display:flex;gap:12px;align-items:flex-start;padding:12px 16px}
+.sigmark{flex:0 0 10px;height:10px;border-radius:2px;margin-top:6px}
+.sig-hi{background:#B42318;color:#fff}.sig-md{background:#C2410C;color:#fff}.sig-lo{background:#C9CED6;color:var(--ink)}
+.sigkind{flex:0 0 auto;margin-left:auto;font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.sigcount{font-size:11px;font-weight:600;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.sigcount.sig-hi{background:var(--hi-bg);color:var(--hi-fg)}.sigcount.sig-md{background:var(--md-bg);color:var(--md-fg)}.sigcount.sig-lo{background:var(--hover);color:var(--ink-2)}
+.size{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:22px;padding:0 6px;border-radius:4px;font-size:12px;font-weight:600;background:var(--hover);color:var(--ink-2)}
+.size-L,.size-XL{background:var(--md-bg);color:var(--md-fg)}
+/* review guide */
+.frow{display:flex;gap:12px;align-items:flex-start;padding:9px 16px;border-top:1px solid var(--hover)}
+.st{flex:0 0 18px;height:18px;border-radius:3px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;background:var(--hover);color:var(--ink-2);margin-top:1px}
+.st-A{background:#E9F5EE;color:var(--add)}.st-D{background:var(--hi-bg);color:var(--hi-fg)}.st-R{background:var(--blue-tint);color:var(--blue)}
+.ftag{font-size:11px;font-weight:600;border-radius:4px;padding:0 6px;white-space:nowrap}
+.warmtag{background:var(--md-bg);color:var(--md-fg)}.bluetag{background:var(--blue-tint);color:var(--blue)}.graytag{background:var(--hover);color:var(--ink-2)}
+.mchip{display:inline-flex;align-items:center;font-size:12px;color:var(--ink-3);border:1px solid var(--line-2);background:#fff;border-radius:4px;padding:2px 8px;min-height:22px}
+.mchip.touched{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+.mchip.blast{border-color:var(--blue);color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);font-weight:500}
+a.mchip:hover{border-color:var(--blue)}a.mchip.touched:hover{color:#fff}
+/* guardrails */
+.vrow{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-top:1px solid var(--line)}
+.vrow:first-child{border-top:0}
+.vrow .fix{font-size:13px;color:var(--ink-2)}.vrow .fix b{font-weight:600;color:var(--ink)}
+.cov{font-size:11px;font-weight:600;border-radius:4px;padding:1px 7px;white-space:nowrap}
+.cov-gap{background:var(--md-bg);color:var(--md-fg)}.cov-part{background:var(--blue-tint);color:var(--blue)}.cov-ok{background:var(--hover);color:var(--ink-2)}
+.ok-pill{font-size:12px;font-weight:600;border-radius:4px;padding:2px 8px;background:#E9F5EE;color:var(--add)}
+.fail-pill{font-size:12px;font-weight:600;border-radius:4px;padding:2px 8px;background:var(--hi-bg);color:var(--hi-fg)}
+.rate{display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:4px 10px;font-size:12px;color:var(--ink-3)}
+.rate .bar{height:8px;background:var(--hover);border-radius:4px;overflow:hidden}.rate .bar span{display:block;height:100%;border-radius:4px;background:var(--blue)}
+.rate .bar.base span{background:#9AA1AC}
+.proof{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.proof-head{display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;align-items:flex-start;padding:14px 16px;background:var(--subtle);border-bottom:1px solid var(--line)}
+.crow{display:grid;grid-template-columns:84px 76px minmax(0,1fr) auto;gap:4px 12px;align-items:baseline;padding:8px 16px;border-top:1px solid var(--hover);font-size:13px}
+.crow:first-child{border-top:0}
+.otag{font-size:11px;font-weight:600;border-radius:4px;padding:0 6px}.otag.fixed{background:var(--md-bg);color:var(--md-fg)}.otag.reverted{background:var(--hi-bg);color:var(--hi-fg)}
+details.cls{border-top:1px solid var(--line)}details.cls:first-child{border-top:0}
+details.cls summary{display:flex;gap:12px;align-items:center;padding:11px 16px;cursor:pointer;list-style:none}
+details.cls summary::-webkit-details-marker{display:none}
+details.cls[open] summary{background:var(--subtle)}
+.ruledef{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr);gap:8px 16px;font-size:13px;align-items:baseline}
+.ruledef .k{color:var(--muted);font-size:12px}
+@media (max-width:640px){.ruledef{grid-template-columns:1fr}}
+.cmd{font-family:var(--mono);font-size:12px;background:var(--subtle);border:1px solid var(--line);border-radius:6px;padding:8px 12px;color:var(--ink-2);display:block;overflow-x:auto;white-space:pre}
+/* diff */
+.diff .dl{display:flex;min-width:max-content}
+.diff .dl.add{background:#EAF6EF}.diff .dl.del{background:#FCEEEC}
+.gut2{flex:0 0 46px;text-align:right;padding-right:8px;color:var(--faint);user-select:none;font-variant-numeric:tabular-nums}
+.diff .sg{flex:0 0 16px;color:var(--ink-3);user-select:none}
+.diff .dl.add .sg{color:var(--add)}.diff .dl.del .sg{color:var(--del)}
+.morebtn{margin:6px 16px;border:1px solid var(--line-2);background:#fff;border-radius:6px;height:30px;padding:0 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans)}
+.morebtn:hover{border-color:var(--blue);color:var(--blue)}
+.chipline{display:flex;flex-wrap:wrap;gap:8px}
+.sigchip{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border:1px solid var(--line-2);border-radius:15px;font-size:13px;color:var(--ink);background:#fff}
+a.sigchip:hover{border-color:var(--blue);color:var(--blue)}
+.sigchip .dot{width:8px;height:8px}
+.cmeta{display:inline-flex;font-size:11px;font-weight:600;border-radius:4px;padding:0 6px;white-space:nowrap}
+.cmeta.ai{background:var(--blue-tint);color:var(--blue)}.cmeta.fix{background:var(--md-bg);color:var(--md-fg)}.cmeta.prn{background:var(--hover);color:var(--ink-2)}
+@media (max-width:900px){
+  .app{flex-direction:column}.side{position:static;height:auto;flex:none;border-right:0;border-bottom:1px solid var(--line)}
+  .top,main{padding-left:16px;padding-right:16px}.top{position:static}
+}
+@media print{.side,.top{display:none}main{max-width:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side" aria-label="Primary" id="side"></nav>
+  <div class="mainwrap">
+    <header class="top">
+      <div class="crumbs" id="crumbs"></div>
+      <button class="searchbtn" id="openPalette" type="button" aria-label="Search the model (Ctrl or Command K)">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#5A6472" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3.5 3.5"/></svg>
+        Search components, files, snippets, terms<span class="kbd">⌘K</span>
+      </button>
+      <button class="btn" type="button" id="printBtn">Print / PDF</button>
+    </header>
+    <main id="view" tabindex="-1"></main>
+  </div>
+</div>
+<dialog class="pal" id="palette" aria-label="Search">
+  <input id="palInput" type="search" placeholder="Jump to a component, flow, snippet, file, term or risk" autocomplete="off" aria-controls="palList">
+  <ul id="palList" role="listbox"></ul>
+  <div class="foot"><span>↑↓ to move</span><span>Enter to open</span><span>Esc to close</span></div>
+</dialog>
+<script id="cartograph-data" type="application/json">/*__CARTOGRAPH_DATA__*/null</script>
+<script>
+(function () {
+'use strict';
+
+// ------------------------------------------------------------------ data
+var RAW = document.getElementById('cartograph-data').textContent;
+var D = null;
+try { D = JSON.parse(RAW); } catch (e) { D = null; }
+if (!D || !D.model) {
+  document.getElementById('view').textContent = 'No model data. Run: python3 .cartographer/bin/build.py';
+  return;
+}
+var M = D.model, F = D.facts || {}, ISSUES = D.issues || [];
+M.layers = M.layers || []; M.components = M.components || []; M.edges = M.edges || [];
+M.flows = M.flows || []; M.snippets = M.snippets || []; M.risks = M.risks || [];
+M.decisions = M.decisions || []; M.glossary = M.glossary || []; M.questions = M.questions || []; M.readingPath = M.readingPath || [];
+var CF = F.components || {};
+function idx(list) { var o = {}; list.forEach(function (x) { o[x.id] = x; }); return o; }
+var COMP = idx(M.components), LAYER = idx(M.layers), SNIP = idx(M.snippets), FLOW = idx(M.flows), RISK = idx(M.risks);
+var SEV_ORDER = { high: 0, medium: 1, low: 2 };
+
+// ------------------------------------------------------------------ dom helpers
+function h(tag, attrs) {
+  var el = document.createElement(tag);
+  if (attrs) for (var k in attrs) {
+    var v = attrs[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.setAttribute('style', v);
+    else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
+  }
+  for (var i = 2; i < arguments.length; i++) add(el, arguments[i]);
+  return el;
+}
+function add(el, c) {
+  if (c == null || c === false) return;
+  if (Array.isArray(c)) { c.forEach(function (x) { add(el, x); }); return; }
+  el.appendChild(c.nodeType ? c : document.createTextNode(String(c)));
+}
+var SVGNS = 'http://www.w3.org/2000/svg';
+function icon(d, size) {
+  var s = document.createElementNS(SVGNS, 'svg');
+  s.setAttribute('width', size || 16); s.setAttribute('height', size || 16); s.setAttribute('viewBox', '0 0 16 16');
+  s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '1.5');
+  s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.setAttribute('aria-hidden', 'true');
+  d.split('|').forEach(function (p) { var e = document.createElementNS(SVGNS, 'path'); e.setAttribute('d', p); s.appendChild(e); });
+  return s;
+}
+var I = {
+  overview: 'M2.5 2.5h4v4h-4z|M9.5 2.5h4v4h-4z|M2.5 9.5h4v4h-4z|M9.5 9.5h4v4h-4z',
+  arch: 'M8 2 14 5 8 8 2 5Z|M2 8l6 3 6-3|M2 11l6 3 6-3',
+  flow: 'M3 3.5h7a2.25 2.25 0 0 1 0 4.5H6a2.25 2.25 0 0 0 0 4.5h7',
+  code: 'M6 4 2 8l4 4|M10 4l4 4-4 4',
+  risk: 'M8 1.5 14 4v4c0 3.5-2.6 5.7-6 6.5C4.6 13.7 2 11.5 2 8V4Z|M8 5.5v3|M8 10.6v.4',
+  changes: 'M1.5 8h3l2-5 3 10 2-5h3',
+  structure: 'M3.5 2.5h3v3h-3z|M9.5 10.5h3v3h-3z|M3.5 10.5h3v3h-3z|M5 5.5v5|M6.5 4h3.5a1.5 1.5 0 0 1 1.5 1.5v5',
+  guard: 'M8 1.5 13.5 3.5v4.2c0 3.2-2.3 5.6-5.5 6.8-3.2-1.2-5.5-3.6-5.5-6.8V3.5Z|M5.6 8l1.7 1.7 3.2-3.4',
+  pr: 'M4.5 2.5v11|M11.5 6.5v7|M4.5 13.5a1.5 1.5 0 1 0 0-.01|M11.5 4.5a1.5 1.5 0 1 0 0-.01|M11.5 6.5c0-2-1.5-3-3.5-3H7',
+  chev: 'm6 3.5 4.5 4.5L6 12.5', prev: 'M10 3.5 5.5 8l4.5 4.5', arrow: 'M3 8h10|M9.5 4.5 13 8l-3.5 3.5',
+  copy: 'M5.5 5.5h8v8h-8z|M10.5 5.5V3a.5.5 0 0 0-.5-.5H3a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h2.5',
+  ext: 'M9 2.5h4.5V7|M13.5 2.5 7 9|M12 9.5V13a.5.5 0 0 1-.5.5h-8A.5.5 0 0 1 3 13V5a.5.5 0 0 1 .5-.5H7'
+};
+function fmt(n) { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
+function kfmt(n) { if (n == null) return '—'; return n >= 10000 ? (Math.round(n / 100) / 10).toFixed(1).replace(/\.0$/, '') + 'k' : fmt(n); }
+function pct(now, prior) {
+  if (prior == null) return null;
+  if (!prior) return now ? { t: 'new', c: now >= 3 ? 'up' : 'flat' } : null;
+  var d = Math.round((now - prior) / prior * 100);
+  var small = now + prior < 6; // too few commits for a trend to mean anything
+  return { t: (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d) + '%', c: small ? 'flat' : d >= 50 ? 'up' : d <= -30 ? 'down' : 'flat', v: d };
+}
+function shortDate(s) { if (!s) return '—'; var d = new Date(s.length <= 10 ? s + 'T12:00:00Z' : s); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function cname(id) { return COMP[id] ? COMP[id].name : (id === '_unmapped' ? 'Unmapped' : id); }
+function short(path) { var p = path.split('/'); return p.length > 4 ? p[0] + '/…/' + p.slice(-2).join('/') : path; }
+function base(path) { return path.split('/').pop(); }
+function blobUrl(path, line) {
+  var t = M.repo && M.repo.blobUrl; if (!t) return null;
+  var commit = (F.head && F.head.commit) || (M.generated && M.generated.commit) || 'HEAD';
+  return t.replace('{commit}', commit).replace('{path}', path).replace('{line}', line || 1);
+}
+function evRef(ev, opts) {
+  if (!ev || !ev.path) return h('span', { class: 'muted small' }, 'No code reference');
+  var label = (opts && opts.full ? ev.path : short(ev.path)) + (ev.line ? ':' + ev.line : '') + (ev.end ? '–' + ev.end : '');
+  var url = blobUrl(ev.path, ev.line);
+  var c = h('code', { title: ev.path + (ev.note ? ' — ' + ev.note : ''), style: 'color:var(--blue);word-break:break-all' }, label);
+  return url ? h('a', { href: url, target: '_blank', rel: 'noopener' }, c) : c;
+}
+function sevPill(s) { return h('span', { class: 'sev ' + s }, s); }
+function compLink(id, cls) { return h('a', { href: '#/component/' + encodeURIComponent(id), class: cls || 'pill' }, cname(id)); }
+
+// ------------------------------------------------------------------ syntax highlighting
+var KW = {
+  c: 'abstract assert async await break case catch class const continue default def defer do else enum export extends final finally fn for foreach from func function go goto if implements import in instanceof interface internal is let match mod module namespace new not null nil None of override package pass private protected pub public raise readonly record return sealed select self static struct super switch synchronized this throw throws trait true false True False try type typeof use using val var void volatile when where while with yield lambda and or elif except global nonlocal println',
+  sql: 'select from where and or not insert into values update set delete create table index view join left right inner outer on group by order having limit as distinct union all case when then else end is null like in exists between primary key foreign references begin commit rollback declare procedure function returns return cursor fetch loop if merge using matched'
+};
+var KWS = {}; Object.keys(KW).forEach(function (k) { KWS[k] = {}; KW[k].split(' ').forEach(function (w) { KWS[k][w] = 1; }); });
+function langOf(s) { return (s.language || (s.path || '').split('.').pop() || '').toLowerCase(); }
+function commentStyle(lang) {
+  if (/^(py|python|rb|ruby|sh|bash|yaml|yml|toml|r|pl|perl|ps1|powershell|tf|hcl|properties)$/.test(lang)) return '#';
+  if (/^(sql|plsql|pls|pkb|pks)$/.test(lang)) return '--';
+  if (/^(cbl|cob|cobol)$/.test(lang)) return '*>';
+  return '//';
+}
+function tokenize(line, lang, st) {
+  var out = [], i = 0, kws = /^(sql|plsql|pls|pkb|pks)$/.test(lang) ? KWS.sql : KWS.c, ci = kws === KWS.sql;
+  var lc = commentStyle(lang), block = lc === '//' || lc === '--';
+  while (i < line.length) {
+    var rest = line.slice(i), m;
+    if (st.inBlock) {
+      var e = rest.indexOf('*/');
+      if (e < 0) { out.push(['c', rest]); break; }
+      out.push(['c', rest.slice(0, e + 2)]); i += e + 2; st.inBlock = false; continue;
+    }
+    if (block && rest.slice(0, 2) === '/*') { st.inBlock = true; continue; }
+    if (rest.slice(0, lc.length) === lc) { out.push(['c', rest]); break; }
+    if ((m = /^("(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?|`(?:[^`\\]|\\.)*`?)/.exec(rest))) { out.push(['s', m[0]]); i += m[0].length; continue; }
+    if ((m = /^@[A-Za-z_][\w.]*/.exec(rest))) { out.push(['a', m[0]]); i += m[0].length; continue; }
+    if ((m = /^\d[\d_.]*[a-zA-Z]*/.exec(rest))) { out.push(['n', m[0]]); i += m[0].length; continue; }
+    if ((m = /^[A-Za-z_$][\w$]*/.exec(rest))) { var w = m[0]; out.push([kws[ci ? w.toLowerCase() : w] ? 'k' : '', w]); i += w.length; continue; }
+    out.push(['', rest[0]]); i += 1;
+  }
+  return out;
+}
+
+// code card: snippet + annotations; clicking a note highlights its line
+function codeCard(sn, opts) {
+  opts = opts || {};
+  var lines = (sn.code || '').replace(/\s+$/, '').split('\n').map(function (l) { return l.replace(/\t/g, '    '); });
+  var indent = Math.min.apply(null, lines.filter(function (l) { return l.trim(); }).map(function (l) { return l.match(/^ */)[0].length; }).concat([999]));
+  if (indent && indent < 999) lines = lines.map(function (l) { return l.slice(indent); });
+  var anns = (sn.annotations || []).slice().sort(function (a, b) { return a.line - b.line; });
+  var active = { v: anns.length ? anns[0].line : null };
+  var drift = (F.snippets || {})[sn.id];
+  var lang = langOf(sn), st = { inBlock: false };
+  var rows = [];
+  var markOf = {}; anns.forEach(function (a, i) { markOf[a.line] = i + 1; });
+  var bodyEl = h('div', { class: 'codebody', role: 'region', 'aria-label': 'Code: ' + sn.title });
+  var inner = h('div');
+  lines.forEach(function (src, i) {
+    var n = (sn.start || 1) + i;
+    var srcEl = h('span', { class: 'src' });
+    tokenize(src, lang, st).forEach(function (t) { srcEl.appendChild(t[0] ? h('span', { class: 'tk-' + t[0] }, t[1]) : document.createTextNode(t[1])); });
+    if (!src) srcEl.appendChild(document.createTextNode(' '));
+    var row = h('div', { class: 'cl' + (markOf[n] ? ' ann' : '') }, h('span', { class: 'gut' }, markOf[n] ? h('span', { class: 'mk' }, markOf[n]) : null, String(n)), srcEl);
+    rows.push([n, row]); inner.appendChild(row);
+  });
+  bodyEl.appendChild(inner);
+  var annList = anns.length ? h('ol', { class: 'anns' }) : null;
+  var annBtns = [];
+  function paint() {
+    rows.forEach(function (r) { r[1].classList.toggle('on', r[0] === active.v); });
+    annBtns.forEach(function (b) { b[1].setAttribute('aria-pressed', String(b[0] === active.v)); });
+  }
+  anns.forEach(function (a, i) {
+    var b = h('button', { type: 'button', onclick: function () { active.v = a.line; paint(); } },
+      h('span', { class: 'badge' }, i + 1),
+      h('span', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', { class: 'mono muted' }, 'Line ' + a.line), h('span', { class: 's13' }, a.note)));
+    annBtns.push([a.line, b]); annList.appendChild(h('li', null, b));
+  });
+  paint();
+  var where = (opts.fullPath ? sn.path : short(sn.path)) + ' : ' + (sn.start || 1) + '–' + ((sn.start || 1) + lines.length - 1) + (sn.pin && sn.pin.commit ? '  ·  pinned @ ' + String(sn.pin.commit).slice(0, 7) : '');
+  var url = blobUrl(sn.path, sn.start);
+  var copyBtn = h('button', { type: 'button', class: 'btn iconbtn', 'aria-label': 'Copy snippet', title: 'Copy code', onclick: function () { if (navigator.clipboard) navigator.clipboard.writeText(sn.code || ''); } }, icon(I.copy, 14));
+  return h('div', { class: 'codecard', id: 'snippet-' + sn.id },
+    h('div', { class: 'codehead' },
+      h('div', { style: 'display:flex;flex-direction:column;gap:2px;min-width:0' },
+        h('span', { class: 't' }, opts.titlePrefix || null, sn.title, sn.kind ? h('span', { class: 'kind ' + sn.kind }, sn.kind.replace('-', ' ')) : null,
+          drift && drift.status && drift.status !== 'unknown' && drift.status !== 'fresh' ? h('span', { class: 'drift ' + drift.status, title: 'Compared with the working tree at build time' }, drift.status === 'moved' ? 'Moved to ' + drift.start + '–' + drift.end : drift.status === 'stale' ? 'Stale — code changed since pinned' : 'File missing') : null),
+        h('code', { class: 'muted', style: 'word-break:break-all' }, where)),
+      h('div', { class: 'row', style: 'gap:6px' }, copyBtn, url ? h('a', { class: 'btn iconbtn', href: url, target: '_blank', rel: 'noopener', 'aria-label': 'Open file at line ' + sn.start }, icon(I.ext, 14)) : null)),
+    sn.why ? h('p', { class: 'codewhy' }, sn.why) : null,
+    bodyEl, annList);
+}
+
+// ------------------------------------------------------------------ chrome
+var NAV = [
+  ['Model', [['overview', 'Overview', I.overview], ['architecture', 'Architecture', I.arch, M.components.length], ['flows', 'Flows', I.flow, M.flows.length || null], ['code', 'Key code', I.code, M.snippets.length || null], ['risks', 'Decisions & risks', I.risk, M.risks.length || null]]],
+  ['Code', [['structure', 'Structure', I.structure, F.structure ? F.structure.compEdges.length : null]]],
+  ['History', [['changes', 'Changes & trends', I.changes], ['prs', 'Pull requests', I.pr, (F.prs || []).length || null]]],
+  ['Factory', [['guard', 'Guardrails', I.guard, F.guard ? F.guard.rules.filter(function (r) { return (r.status || 'active') === 'active'; }).length : null]]]
+];
+function renderSide(active) {
+  var side = document.getElementById('side'); side.replaceChildren();
+  var mark = document.createElementNS(SVGNS, 'svg'); mark.setAttribute('width', 22); mark.setAttribute('height', 22); mark.setAttribute('viewBox', '0 0 22 22'); mark.setAttribute('aria-hidden', 'true');
+  [['rect', { width: 22, height: 22, rx: 5, fill: '#0047BB' }], ['path', { d: 'M5 7.5 9 5.5l4 2 4-2v9l-4 2-4-2-4 2Z', fill: 'none', stroke: '#fff', 'stroke-width': 1.4, 'stroke-linejoin': 'round' }], ['path', { d: 'M9 5.5v9M13 7.5v9', stroke: '#fff', 'stroke-width': 1.4 }]].forEach(function (x) { var e = document.createElementNS(SVGNS, x[0]); for (var k in x[1]) e.setAttribute(k, x[1][k]); mark.appendChild(e); });
+  side.appendChild(h('div', { class: 'brand' }, mark, 'Cartographer'));
+  var head = F.head || {};
+  side.appendChild(h('div', { class: 'repo-card' }, h('span', { class: 'k' }, 'Repository'), h('span', { class: 'v' }, M.repo.name || 'repository'),
+    h('span', { class: 'mono muted' }, (head.branch || (M.generated || {}).branch || '') + (head.commit ? ' · ' + String(head.commit).slice(0, 7) : ''))));
+  NAV.forEach(function (g) {
+    side.appendChild(h('div', { class: 'navgroup' }, h('span', { class: 'eyebrow' }, g[0]), g[1].map(function (n) {
+      return h('a', { class: 'navlink', href: '#/' + n[0], 'aria-current': active === n[0] ? 'page' : null }, icon(n[2]), n[1], n[3] != null ? h('span', { class: 'count' }, n[3]) : null);
+    })));
+  });
+  var gen = M.generated || {}, sm = F.sinceModel;
+  if (M.auto) { side.appendChild(h('div', { class: 'side-foot' }, h('span', null, 'Provisional model (directories)'), h('span', null, 'Facts from ' + String((F.head || {}).commit || '').slice(0, 7)), h('span', { class: 'mono', style: 'color:var(--ink-2)' }, '/cartograph-survey'))); return; }
+  var foot = h('div', { class: 'side-foot' }, h('span', null, 'Model built ' + shortDate(gen.at) + (gen.commit ? ' from ' + String(gen.commit).slice(0, 7) : '')));
+  if (sm && sm.commits) foot.appendChild(h('span', { class: 'behind' }, h('span', { class: 'dot' }), sm.commits + ' commit' + (sm.commits === 1 ? '' : 's') + ' since'));
+  else if (sm && sm.unknownCommit) foot.appendChild(h('span', { class: 'behind' }, h('span', { class: 'dot' }), 'Model commit not in this clone'));
+  else if (sm) foot.appendChild(h('span', null, 'Up to date with ' + (head.branch || 'HEAD')));
+  foot.appendChild(h('span', { class: 'mono', style: 'color:var(--ink-2)' }, '/cartograph-refresh'));
+  side.appendChild(foot);
+}
+function crumbs(parts) {
+  var c = document.getElementById('crumbs'); c.replaceChildren();
+  var all = [[M.repo.name, '#/overview']].concat(parts);
+  all.forEach(function (p, i) {
+    if (i) c.appendChild(h('span', { class: 'sep' }, '/'));
+    c.appendChild(i === all.length - 1 ? h('span', { class: 'cur' }, p[0]) : h('a', { href: p[1] }, p[0]));
+  });
+}
+
+// ------------------------------------------------------------------ routing
+function route() {
+  var raw = location.hash.replace(/^#\/?/, ''), q = '';
+  var qi = raw.indexOf('?'); if (qi >= 0) { q = raw.slice(qi + 1); raw = raw.slice(0, qi); }
+  var parts = raw.split('/').filter(Boolean).map(decodeURIComponent);
+  var query = {}; q.split('&').filter(Boolean).forEach(function (kv) { var p = kv.split('='); query[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); });
+  return { name: parts[0] || 'overview', args: parts.slice(1), query: query };
+}
+var lastRoute = '';
+function render() {
+  var r = route(), view = document.getElementById('view');
+  var fn = VIEWS[r.name] || VIEWS.overview;
+  view.replaceChildren(fn(r));
+  var key = r.name + '/' + (r.args[0] || '');
+  if (key !== lastRoute) { window.scrollTo(0, 0); lastRoute = key; }
+  document.title = 'Cartographer · ' + M.repo.name;
+}
+window.addEventListener('hashchange', render);
+
+// ------------------------------------------------------------------ shared blocks
+function sectionHead(title, aside) { return h('div', { class: 'between' }, h('h2', null, title), aside || null); }
+function emptyFacts(msg) { return h('div', { class: 'box empty' }, msg || 'No git history collected. Run collect.py, then build.py.'); }
+function weekBars(series, cls) {
+  var mx = Math.max.apply(null, series.concat([1]));
+  return h('div', { class: cls || 'spark', role: 'img', 'aria-label': 'Weekly commits: ' + series.join(', ') },
+    series.map(function (v, i) { return h('span', { class: i >= series.length - 4 ? 'cur' : '', style: 'height:' + Math.max(2, Math.round(v / mx * 100)) + '%' }); }));
+}
+function deltaEl(d) { return d ? h('span', { class: d.c }, d.t) : h('span', { class: 'muted' }, '—'); }
+function componentRisks(id) { return M.risks.filter(function (r) { return (r.components || []).indexOf(id) >= 0; }).sort(function (a, b) { return SEV_ORDER[a.severity] - SEV_ORDER[b.severity]; }); }
+
+// ------------------------------------------------------------------ views
+var VIEWS = {};
+
+VIEWS.overview = function () {
+  renderSide('overview'); crumbs([['Overview']]);
+  var R = F.repo, inv = F.inventory, cov = F.coverage;
+  var internal = M.components.filter(function (c) { return c.layer !== 'external'; });
+  var sevCount = { high: 0, medium: 0, low: 0 }; M.risks.forEach(function (r) { sevCount[r.severity] = (sevCount[r.severity] || 0) + 1; });
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:28px' });
+
+  var head = h('section', { class: 'section', style: 'gap:14px' },
+    h('div', { class: 'row', style: 'align-items:baseline;gap:8px 14px' }, h('h1', { style: 'font-size:24px' }, M.repo.name),
+      cov ? h('span', { class: 'pill gray', title: 'Share of lines mapped to a component' }, 'Model covers ' + cov.mappedPct + '% of lines') : null),
+    M.repo.summary ? h('p', { class: 'lede' }, M.repo.summary) : null,
+    M.repo.purpose ? h('p', { class: 'sub s13' }, M.repo.purpose) : null);
+  if (inv && inv.languages.length) {
+    var shades = ['#0047BB', '#5B86D6', '#A9C0EA', '#6B7380', '#C9CED6', '#D5DAE1', '#E2E5EA', '#EEF1F5'];
+    var langs = inv.languages.slice(0, 5), other = Math.max(0, 100 - langs.reduce(function (a, l) { return a + l.pct; }, 0));
+    if (other >= 0.5) langs = langs.concat([{ name: 'Other', pct: Math.round(other * 10) / 10 }]);
+    head.appendChild(h('div', { style: 'display:flex;flex-direction:column;gap:8px;max-width:780px' },
+      h('div', { style: 'display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px', role: 'img', 'aria-label': 'Lines by language: ' + langs.map(function (l) { return l.name + ' ' + l.pct + '%'; }).join(', ') },
+        langs.map(function (l, i) { return h('span', { style: 'flex:' + l.pct + ';background:' + shades[i] }); })),
+      h('div', { class: 'row small', style: 'gap:6px 18px;color:var(--ink-2)' },
+        langs.map(function (l, i) { return h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'width:8px;height:8px;border-radius:2px;background:' + shades[i] }), l.name + ' ' + l.pct + '%'); }),
+        h('span', { class: 'muted' }, fmt(inv.files) + ' files · ' + kfmt(inv.loc) + ' lines'))));
+  }
+  page.appendChild(head);
+
+  if (M.auto) page.appendChild(h('div', { class: 'callout info text s13' }, h('strong', null, 'Provisional model. '), 'Components are the directories that hold the code, so everything below is computed from git and imports but nothing is explained yet. Run ', h('code', null, '/cartograph-survey'), ' for named components, flows, key code, decisions and risks.'));
+  var errs = ISSUES.filter(function (i) { return i.level === 'error'; });
+  if (errs.length) page.appendChild(h('details', { class: 'callout' },
+    h('summary', { style: 'cursor:pointer;font-weight:600' }, 'Model check: ' + errs.length + ' error' + (errs.length === 1 ? '' : 's') + ', ' + (ISSUES.length - errs.length) + ' warning(s) — some claims may no longer match the code'),
+    h('ul', { class: 's13', style: 'margin:8px 0 0;padding-left:18px' }, ISSUES.slice(0, 30).map(function (i) { return h('li', null, h('code', null, i.where), ' — ', i.msg); }))));
+
+  page.appendChild(h('section', { class: 'stats', 'aria-label': 'Key figures' },
+    stat('Components', M.components.length, internal.length + ' internal · ' + (M.components.length - internal.length) + ' external'),
+    stat('Commits · 90 days', R ? fmt(R.commits) : '—', R ? (pct(R.commits, R.prior) ? pct(R.commits, R.prior).t + ' vs prior 90 days' : 'no prior window') : 'history not collected'),
+    stat('Active authors · 90 days', R ? fmt(R.authors) : '—', R && R.newAuthors != null ? R.newAuthors + ' not active in the prior ' + ((R.historyDays || 365) - 90) + ' days' : ''),
+    M.risks.length || !F.defects ? stat('Open risks', M.risks.length, sevCount.high + ' high · ' + sevCount.medium + ' medium · ' + sevCount.low + ' low')
+      : stat('Fix commits', Math.round(100 * F.defects.fixCommits / Math.max(1, F.defects.commits)) + '%', fmt(F.defects.fixCommits) + ' in ' + F.defects.windowDays + ' days')));
+  page.appendChild(signalChips());
+
+  var left = h('div', { class: 'col-main' }), right = h('aside', { class: 'col-side', style: 'gap:28px' });
+  if (M.readingPath.length) {
+    left.appendChild(h('section', { class: 'section' }, sectionHead('Start here', h('span', { class: 'small muted' }, 'Curated reading path · ' + M.readingPath.length + ' stops')),
+      h('ol', { class: 'list box', style: 'overflow:hidden' }, M.readingPath.map(function (p, i) {
+        var t = targetOf(p.target);
+        return h('li', null, h('a', { class: 'rowlink', href: t.href },
+          h('span', { class: 'numcircle' }, i + 1),
+          h('span', { style: 'flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px' }, h('span', { style: 'font-weight:600' }, p.title), p.note ? h('span', { class: 's13', style: 'color:var(--ink-3)' }, p.note) : null),
+          h('span', { class: 'pill' }, t.kind), h('span', { style: 'color:var(--faint);margin-top:2px' }, icon(I.chev))));
+      }))));
+  }
+  left.appendChild(h('section', { class: 'section' }, sectionHead('System at a glance', h('a', { href: '#/architecture', class: 's13', style: 'font-weight:500' }, 'Open architecture')),
+    h('div', { class: 'box' }, M.layers.map(function (l, i) {
+      var cs = M.components.filter(function (c) { return c.layer === l.id; });
+      if (!cs.length) return null;
+      return h('div', { class: 'row', style: 'padding:12px 16px;gap:8px 16px;' + (i ? 'border-top:1px solid var(--line)' : '') },
+        h('span', { class: 'eyebrow', style: 'flex:0 0 132px' }, l.name),
+        h('span', { style: 'flex:1 1 300px;display:flex;flex-wrap:wrap;gap:6px' }, cs.map(function (c) {
+          return h('a', { class: 'chip' + (l.id === 'external' ? ' ext' : ''), href: '#/architecture/' + encodeURIComponent(c.id) }, c.name, componentRisks(c.id).length ? h('span', { class: 'riskdot', title: 'Has open risks' }) : null);
+        })));
+    }))));
+
+  if (R) {
+    var top = M.components.filter(function (c) { return CF[c.id] && CF[c.id].commits; }).sort(function (a, b) { return CF[b.id].commits - CF[a.id].commits; }).slice(0, 6);
+    var mx = top.length ? CF[top[0].id].commits : 1;
+    right.appendChild(h('section', { class: 'section' }, sectionHead('Where change is concentrated', h('span', { class: 'small muted' }, '90 days')),
+      h('div', { class: 'box', style: 'padding:6px 0' }, top.length ? top.map(function (c) {
+        var f = CF[c.id];
+        return h('a', { class: 'rowlink', href: '#/component/' + encodeURIComponent(c.id), style: 'display:grid;grid-template-columns:minmax(0,1fr) 84px 56px;gap:12px;align-items:center;padding:8px 16px' },
+          h('span', { style: 'display:flex;flex-direction:column;gap:4px;min-width:0' }, h('span', { class: 's13', style: 'font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, c.name), h('span', { class: 'bar' }, h('span', { style: 'width:' + Math.max(3, Math.round(f.commits / mx * 100)) + '%' }))),
+          h('span', { class: 's13 num', style: 'text-align:right;color:var(--ink-2)' }, f.commits + ' commits'),
+          h('span', { class: 'small num', style: 'text-align:right' }, deltaEl(pct(f.commits, f.prior))));
+      }) : h('div', { class: 'empty' }, 'No commits touched mapped components in this window.'))));
+  }
+  if (M.risks.length) {
+    var rs = M.risks.slice().sort(function (a, b) { return SEV_ORDER[a.severity] - SEV_ORDER[b.severity]; }).slice(0, 3);
+    right.appendChild(h('section', { class: 'section' }, sectionHead('Highest risks', h('a', { href: '#/risks', class: 's13', style: 'font-weight:500' }, 'All ' + M.risks.length)),
+      h('ul', { class: 'list box', style: 'overflow:hidden' }, rs.map(function (r) {
+        return h('li', null, h('a', { class: 'rowlink', href: '#/risks/' + encodeURIComponent(r.id) }, h('span', { style: 'margin-top:1px' }, sevPill(r.severity)),
+          h('span', { style: 'display:flex;flex-direction:column;gap:2px;min-width:0' }, h('span', { class: 's13', style: 'font-weight:600' }, r.title), h('span', { class: 'small', style: 'color:var(--ink-3)' }, (r.components || []).map(cname).join(' · ')))));
+      }))));
+  }
+  if (M.questions.length) right.appendChild(h('section', { class: 'section' }, h('h2', null, 'Open questions'),
+    h('ul', { class: 'list', style: 'display:flex;flex-direction:column;gap:10px' }, M.questions.map(function (q) {
+      return h('li', { class: 's13', style: 'display:flex;gap:10px;color:var(--ink-2);border:0' }, h('span', { class: 'mono', style: 'color:var(--faint)' }, '?'), q.q);
+    }))));
+  page.appendChild(h('div', { class: 'cols' }, left, right));
+  return page;
+};
+function signalChips() {
+  var chips = [];
+  function chip(href, warm, text) { chips.push(h('a', { class: 'sigchip', href: href }, h('span', { class: 'dot', style: 'background:' + (warm ? 'var(--warm-dot)' : 'var(--blue-2)') }), text)); }
+  if (F.coupling) { var hd = F.coupling.components.filter(function (p) { return p.hidden; }).length; if (hd) chip('#/changes?tab=coupling', 1, hd + ' hidden dependenc' + (hd === 1 ? 'y' : 'ies')); }
+  if (F.knowledge) {
+    var orph = Object.keys(F.knowledge.components).filter(function (c) { return F.knowledge.components[c].orphanedPct >= 50 && COMP[c] && COMP[c].layer !== 'external'; }).length;
+    var single = Object.keys(F.knowledge.components).filter(function (c) { return F.knowledge.components[c].activeBusFactor <= 1 && (CF[c] || {}).commits; }).length;
+    if (orph) chip('#/changes?tab=knowledge', 1, orph + ' orphaned area' + (orph === 1 ? '' : 's'));
+    if (single && (F.repo || {}).authors > 2) chip('#/changes?tab=knowledge', 1, single + ' single-owner area' + (single === 1 ? '' : 's'));
+  }
+  if (F.structure) {
+    var S = F.structure, v = S.compEdges.filter(function (e) { return e.violation; }).length, um = S.compEdges.filter(function (e) { return !e.inModel; }).length;
+    if (S.cycles.length) chip('#/structure', 1, S.cycles.length + ' dependency cycle' + (S.cycles.length === 1 ? '' : 's'));
+    if (v) chip('#/structure', 1, v + ' layer violation' + (v === 1 ? '' : 's'));
+    if (um && !M.auto) chip('#/structure', 0, um + ' code dependenc' + (um === 1 ? 'y' : 'ies') + ' not in the model');
+    if (S.untested.length) chip('#/structure?tab=tests', 0, S.untested.length + ' component' + (S.untested.length === 1 ? '' : 's') + ' no test imports');
+  }
+  if (F.guard) {
+    var G = F.guard, over = guardOver(G).length;
+    if (G.last && !G.last.ok) chip('#/guard', 1, G.last.blocking.length + ' guardrail failure' + (G.last.blocking.length === 1 ? '' : 's') + ' in the last run');
+    if (over) chip('#/guard', 1, over + ' structural count' + (over === 1 ? '' : 's') + ' above baseline');
+    var gaps = G.lessons ? G.lessons.classes.filter(function (c) { return c.coverage === 'gap'; }).length : 0;
+    if (gaps) chip('#/guard?tab=lessons', 0, gaps + ' repeated mistake' + (gaps === 1 ? '' : 's') + ' no rule catches');
+  }
+  if (F.ai && F.ai.recent) chip('#/changes?tab=ai', 0, F.ai.recentShare + '% of recent commits AI-assisted');
+  if (F.defects && F.defects.commits) chip('#/changes?tab=hotspots', 0, Math.round(100 * F.defects.fixCommits / F.defects.commits) + '% of commits are fixes');
+  if (F.prHistory && F.prHistory.stale.length) chip('#/prs', 1, F.prHistory.stale.length + ' PR' + (F.prHistory.stale.length === 1 ? '' : 's') + ' waiting for review');
+  return chips.length ? h('div', { class: 'chipline', 'aria-label': 'Signals' }, chips) : null;
+}
+function stat(k, v, s) { return h('div', { class: 'stat' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, v), h('span', { class: 's' }, s || '')); }
+function targetOf(t) {
+  var p = String(t || '').split(':'), kind = p[0], id = p.slice(1).join(':');
+  if (kind === 'component') return { kind: 'Component', href: '#/component/' + encodeURIComponent(id) };
+  if (kind === 'flow') return { kind: 'Flow', href: '#/flows/' + encodeURIComponent(id) };
+  if (kind === 'snippet') return { kind: 'Snippet', href: '#/code/' + encodeURIComponent(id) };
+  if (kind === 'risk') return { kind: 'Risk', href: '#/risks/' + encodeURIComponent(id) };
+  if (kind === 'decision') return { kind: 'Decision', href: '#/risks' };
+  if (kind === 'file') return { kind: 'File', href: blobUrl(id) || '#/overview' };
+  var views = { changes: 'changes', architecture: 'architecture', flows: 'flows', code: 'code', risks: 'risks', overview: 'overview' };
+  return { kind: 'View', href: '#/' + (views[id] || 'overview') };
+}
+
+VIEWS.architecture = function (r) {
+  renderSide('architecture'); crumbs([['Architecture']]);
+  var sel = r.args[0] && COMP[r.args[0]] ? r.args[0] : (M.components.filter(function (c) { return c.layer !== 'external'; })[0] || M.components[0] || {}).id;
+  var mode = r.query.mode || 'structure', showExt = r.query.ext !== '0', filter = (r.query.q || '').toLowerCase();
+  function href(s, m, e, q) { var qs = []; if ((m || mode) !== 'structure') qs.push('mode=' + (m || mode)); if (!(e == null ? showExt : e)) qs.push('ext=0'); if (q != null ? q : filter) qs.push('q=' + encodeURIComponent(q != null ? q : filter)); return '#/architecture/' + encodeURIComponent(s || sel) + (qs.length ? '?' + qs.join('&') : ''); }
+  var outs = M.edges.filter(function (e) { return e.from === sel; }), ins = M.edges.filter(function (e) { return e.to === sel; });
+  var rel = {}; outs.forEach(function (e) { rel[e.to] = '→ ' + (e.kind || 'calls'); }); ins.forEach(function (e) { rel[e.from] = rel[e.from] ? '↔ both' : '← ' + (e.kind === 'calls' || !e.kind ? 'called by' : e.kind + ' by'); });
+  var maxC = 1; M.components.forEach(function (c) { if (CF[c.id] && CF[c.id].commits > maxC) maxC = CF[c.id].commits; });
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' });
+  var filterIn = h('input', { class: 'filter-in', type: 'search', placeholder: 'Filter components', value: filter, 'aria-label': 'Filter components',
+    onchange: function (e) { location.hash = href(null, null, null, e.target.value); } });
+  page.appendChild(h('div', { class: 'row', style: 'justify-content:space-between;align-items:flex-end;gap:16px' },
+    h('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:680px' }, h('h1', null, 'Architecture'),
+      h('p', { class: 'sub' }, 'Components by layer. Select one to trace what it depends on and what depends on it; everything unrelated recedes.')),
+    h('div', { class: 'row' }, filterIn,
+      h('div', { class: 'seg', role: 'group', 'aria-label': 'Colour by' }, [['structure', 'Structure'], ['churn', 'Churn'], ['ownership', 'Ownership']].map(function (m) {
+        return h('button', { type: 'button', 'aria-pressed': String(mode === m[0]), onclick: function () { location.hash = href(null, m[0]); } }, m[1]);
+      })),
+      h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showExt), onclick: function () { location.hash = href(null, null, !showExt); } },
+        h('span', { style: 'width:28px;height:16px;border-radius:8px;position:relative;display:inline-block;background:' + (showExt ? 'var(--blue)' : '#B8BFC9') }, h('span', { style: 'position:absolute;top:2px;left:' + (showExt ? 14 : 2) + 'px;width:12px;height:12px;border-radius:6px;background:#fff' })), 'External systems'))));
+
+  var map = h('section', { class: 'archmap', 'aria-label': 'Layered component map', style: 'flex:999 1 560px;min-width:0' });
+  M.layers.forEach(function (l) {
+    if (l.id === 'external' && !showExt) return;
+    var cs = M.components.filter(function (c) { return c.layer === l.id && (!filter || (c.name + ' ' + (c.paths || []).join(' ') + ' ' + (c.tech || []).join(' ')).toLowerCase().indexOf(filter) >= 0); });
+    if (!cs.length) return;
+    map.appendChild(h('div', { class: 'lane' + (l.id === 'external' ? ' external' : '') },
+      h('div', { class: 'lane-h' }, h('span', { class: 'eyebrow', style: 'color:var(--ink-2)' }, l.name), l.description ? h('span', { class: 'd' }, l.description) : null),
+      h('div', { class: 'lane-b' }, cs.map(function (c) {
+        var f = CF[c.id] || {}, isSel = c.id === sel, rr = rel[c.id], risks = componentRisks(c.id), ext = c.layer === 'external';
+        var cls = 'node' + (isSel ? ' sel' : rr ? ' rel' : ' dim');
+        var style = '';
+        if (mode === 'churn' && !ext && f.commits) style = 'background:rgba(0,71,187,' + (0.04 + 0.22 * f.commits / maxC).toFixed(3) + ')';
+        var metric;
+        if (ext) metric = c.summary ? h('span', { class: 'mt' }, c.summary) : null;
+        else if (mode === 'ownership') metric = h('span', { style: 'display:flex;flex-direction:column;gap:6px' },
+          h('span', { class: 'mt' }, f.owners && f.owners[0] ? f.owners[0].name + ' · ' + f.owners[0].share + '% of changes' : 'No history'),
+          f.busFactor ? h('span', { class: 'small', style: 'font-weight:600;color:' + (f.busFactor <= 1 ? 'var(--warm)' : 'var(--ink-2)') }, 'Bus factor ' + f.busFactor) : null);
+        else metric = h('span', { style: 'display:flex;flex-direction:column;gap:6px' },
+          h('span', { class: 'mt' }, [f.files != null ? fmt(f.files) + ' files' : null, f.loc != null ? kfmt(f.loc) + ' lines' : null, f.commits != null ? f.commits + ' commits' : null].filter(Boolean).join(' · ') || (c.paths || [])[0] || ''),
+          h('span', { class: 'row', style: 'gap:8px;flex-wrap:nowrap' },
+            mode === 'churn' ? h('span', { class: 'small' }, deltaEl(pct(f.commits || 0, f.prior))) : h('span', { class: 'bar', style: 'flex:1 1 auto' }, h('span', { style: 'background:var(--blue-2);width:' + (f.commits ? Math.max(4, Math.round(f.commits / maxC * 100)) : 0) + '%' })),
+            risks.length ? h('span', { class: 'rk' }, risks.length + (risks.length === 1 ? ' risk' : ' risks')) : null));
+        return h('button', { type: 'button', class: cls, style: style, 'aria-pressed': String(isSel), onclick: function () { location.hash = href(c.id); } },
+          h('span', { style: 'display:flex;justify-content:space-between;align-items:flex-start;gap:8px' },
+            h('span', { style: 'display:flex;flex-direction:column;gap:1px;min-width:0' }, h('span', { class: 'nm' }, c.name), h('span', { class: 'kd' }, c.kind || '')),
+            rr && !isSel ? h('span', { class: 'rel-tag' }, rr) : null),
+          metric);
+      }))));
+  });
+  var legend = h('div', { class: 'legend' });
+  if (mode === 'structure') legend.appendChild(h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'width:18px;height:4px;background:var(--blue-2);border-radius:2px;display:inline-block' }), 'Commits · 90 days, relative'));
+  if (mode === 'churn') legend.appendChild(h('span', null, 'Fill = commits in 90 days · change vs prior 90 days'));
+  if (mode === 'ownership') legend.appendChild(h('span', null, 'Top author share of changes · bus factor = authors covering half of all changes (12 months)'));
+  legend.appendChild(h('span', { class: 'row', style: 'gap:6px' }, h('span', { class: 'rel-tag', style: 'font-size:11px;font-weight:600;color:var(--blue);background:var(--blue-tint);border-radius:4px;padding:0 6px' }, '→'), 'The selection depends on it'));
+  legend.appendChild(h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'font-size:11px;font-weight:600;color:var(--blue);background:var(--blue-tint);border-radius:4px;padding:0 6px' }, '←'), 'It depends on the selection'));
+  if (F.coverage && F.coverage.mappedPct < 98) legend.appendChild(h('span', { style: 'margin-left:auto' }, 'Unmapped: ' + F.coverage.unmapped.slice(0, 3).map(function (u) { return u.dir + ' (' + kfmt(u.loc) + ')'; }).join(', ')));
+  map.appendChild(legend);
+
+  var c = COMP[sel] || {}, cf = CF[sel] || {};
+  var VER = {}; ((F.structure || {}).verification || []).forEach(function (v) { VER[v.from + '|' + v.to] = v; });
+  function depRows(list, key, emptyMsg) {
+    if (!list.length) return h('span', { class: 's13 muted' }, emptyMsg);
+    return list.map(function (e) {
+      var v = VER[e.from + '|' + e.to];
+      var badge = v && v.status === 'verified' ? h('span', { class: 'drift fresh', title: v.count + ' file(s) import across this edge' }, '✓ code') : v && v.status === 'unseen' ? h('span', { class: 'drift stale', title: 'No import found: runtime wiring, or the edge is wrong' }, 'not in imports') : null;
+      return h('a', { class: 'deprow', href: href(e[key]) }, h('span', { class: 'row', style: 'gap:6px;flex-wrap:nowrap' }, h('span', { style: 'font-weight:500' }, cname(e[key])), badge), h('span', { class: 'l' }, e.label || e.kind || ''));
+    });
+  }
+  var unmodeled = ((F.structure || {}).compEdges || []).filter(function (e) { return !e.inModel && (e.from === sel || e.to === sel); });
+  var panel = h('aside', { class: 'box panel', 'aria-label': 'Selected component', style: 'flex:1 1 340px;min-width:0;align-self:flex-start' },
+    h('div', { style: 'padding:18px 20px;gap:6px' }, h('span', { class: 'small muted' }, (LAYER[c.layer] || {}).name + (c.kind ? ' · ' + c.kind : '')),
+      h('h2', { style: 'font-size:18px;letter-spacing:-.01em' }, c.name || ''),
+      (c.paths || []).length ? h('code', { style: 'color:var(--ink-2);word-break:break-all' }, c.paths.join(', ')) : null,
+      c.summary ? h('p', { class: 's13', style: 'margin:6px 0 0;color:var(--ink-2);line-height:1.55' }, c.summary) : null),
+    h('div', null, h('span', { class: 'eyebrow' }, 'Depends on · ' + outs.length), depRows(outs, 'to', 'Nothing inside the model')),
+    h('div', null, h('span', { class: 'eyebrow' }, 'Used by · ' + ins.length), depRows(ins, 'from', c.layer === 'external' ? 'No inbound edges in the model' : 'Entry point — nothing in the model calls it')),
+    unmodeled.length ? h('div', { style: 'background:var(--subtle)' }, h('span', { class: 'eyebrow' }, 'In code, not in the model · ' + unmodeled.length), unmodeled.slice(0, 6).map(function (e) {
+      var other = e.from === sel ? e.to : e.from;
+      return h('a', { class: 'deprow', href: href(other) }, h('span', null, h('span', { class: 'muted' }, e.from === sel ? '→ ' : '← '), h('span', { style: 'font-weight:500' }, cname(other))), h('span', { class: 'l' }, e.count + ' file' + (e.count === 1 ? '' : 's') + (e.violation ? ' · against layering' : '')));
+    })) : null,
+    (c.keyFiles || []).length ? h('div', null, h('span', { class: 'eyebrow' }, 'Key files'), c.keyFiles.slice(0, 5).map(function (f) {
+      return h('div', { style: 'display:flex;flex-direction:column' }, evRef({ path: f.path }), h('span', { class: 'small muted' }, f.role || ''));
+    })) : null,
+    c.layer !== 'external' ? h('div', { style: 'flex-direction:row;flex-wrap:wrap;gap:10px' },
+      h('a', { class: 'btn primary', href: '#/component/' + encodeURIComponent(sel) }, 'Open component'),
+      M.flows.some(function (fl) { return (fl.steps || []).some(function (s) { return s.component === sel; }); }) ? h('a', { class: 'btn', href: '#/flows?through=' + encodeURIComponent(sel) }, 'Flows through it') : null) : null);
+  page.appendChild(h('div', { class: 'cols', style: 'gap:20px' }, map, panel));
+  return page;
+};
+
+VIEWS.component = function (r) {
+  renderSide('architecture');
+  var id = r.args[0], c = COMP[id];
+  if (!c) { crumbs([['Architecture', '#/architecture'], ['Not found']]); return h('div', { class: 'empty' }, 'Unknown component: ' + id); }
+  var layer = LAYER[c.layer] || {};
+  crumbs([['Architecture', '#/architecture/' + encodeURIComponent(id)], [layer.name || c.layer, '#/architecture/' + encodeURIComponent(id)], [c.name]]);
+  var cf = CF[id] || {}, tab = r.query.tab || 'overview';
+  var snips = (c.snippets || []).map(function (s) { return SNIP[s]; }).filter(Boolean);
+  M.snippets.forEach(function (s) { if (s.component === id && snips.indexOf(s) < 0) snips.push(s); });
+  var outs = M.edges.filter(function (e) { return e.from === id; }), ins = M.edges.filter(function (e) { return e.to === id; });
+  var risks = componentRisks(id);
+  var evidence = (c.evidence || []).map(function (e) { return [e, 'Component']; });
+  outs.concat(ins).forEach(function (e) { (e.evidence || []).forEach(function (ev) { evidence.push([ev, 'Edge · ' + cname(e.from) + ' → ' + cname(e.to)]); }); });
+  risks.forEach(function (rk) { (rk.evidence || []).forEach(function (ev) { evidence.push([ev, 'Risk · ' + rk.title]); }); });
+  var conf = { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' }[c.confidence] || null;
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' });
+  page.appendChild(h('div', { class: 'row', style: 'justify-content:space-between;align-items:flex-start;gap:16px' },
+    h('div', { style: 'display:flex;flex-direction:column;gap:8px;min-width:0' },
+      h('div', { class: 'row', style: 'gap:8px 12px' }, h('h1', { style: 'font-size:24px' }, c.name), h('span', { class: 'pill' }, (layer.name || c.layer) + (c.kind ? ' · ' + c.kind : '')),
+        conf ? h('span', { class: 'pill blue' }, conf + ' · ' + evidence.length + ' evidence link' + (evidence.length === 1 ? '' : 's')) : null),
+      (c.paths || []).length ? h('code', { style: 'font-size:13px;color:var(--ink-2);word-break:break-all' }, c.paths.join('  ·  ')) : null),
+    h('div', { class: 'row', style: 'gap:8px' },
+      (c.paths || []).length ? h('button', { type: 'button', class: 'btn', onclick: function () { if (navigator.clipboard) navigator.clipboard.writeText(c.paths[0]); } }, 'Copy path') : null,
+      (c.paths || []).length && blobUrl(c.paths[0]) ? h('a', { class: 'btn primary', href: blobUrl(c.paths[0]).replace(/#L\d+$/, ''), target: '_blank', rel: 'noopener' }, 'Open in repo') : null)));
+  var ifaces = ((F.structure || {}).api || []).filter(function (a) { return a.component === id; });
+  var tabs = [['overview', 'Overview'], ['code', 'Key code', snips.length], ['deps', 'Dependencies', outs.length + ins.length], ['interfaces', 'Interfaces', ifaces.length || null], ['history', 'History'], ['evidence', 'Evidence', evidence.length]];
+  page.appendChild(h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Component sections' }, tabs.map(function (t) {
+    return h('button', { type: 'button', role: 'tab', 'aria-selected': String(tab === t[0]), onclick: function () { location.hash = '#/component/' + encodeURIComponent(id) + (t[0] === 'overview' ? '' : '?tab=' + t[0]); } }, t[1], t[2] ? h('span', { class: 'c' }, t[2]) : null);
+  })));
+  var main = h('div', { class: 'col-main' });
+  if (tab === 'overview') {
+    var intro = h('section', { class: 'section', style: 'gap:12px' });
+    if (c.summary) intro.appendChild(h('p', { class: 'lede' }, c.summary));
+    if ((c.responsibilities || []).length) intro.appendChild(h('ul', { style: 'margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--ink-2)' }, c.responsibilities.map(function (x) { return h('li', null, x); })));
+    if ((c.tech || []).length || (c.interfaces || []).length) intro.appendChild(h('div', { class: 'row', style: 'gap:6px' },
+      (c.tech || []).map(function (t) { return h('span', { class: 'pill' }, t); }),
+      (c.interfaces || []).map(function (it) { return h('span', { class: 'pill blue', title: it.ref || '' }, (it.kind || '').toUpperCase() + ' · ' + it.name); })));
+    main.appendChild(intro);
+    if (snips.length) main.appendChild(h('section', { class: 'section', 'aria-label': 'Key code' }, sectionHead('Key code', h('span', { class: 'small muted' }, 'Select a note to locate it')), snips.slice(0, 2).map(function (s) { return codeCard(s); }),
+      snips.length > 2 ? h('a', { href: '#/component/' + encodeURIComponent(id) + '?tab=code', class: 's13', style: 'font-weight:500' }, 'All ' + snips.length + ' snippets') : null));
+    if ((c.keyFiles || []).length) main.appendChild(keyFilesTable(c));
+  } else if (tab === 'code') {
+    main.appendChild(snips.length ? h('div', { class: 'section', style: 'gap:20px' }, snips.map(function (s) { return codeCard(s); })) : h('div', { class: 'box empty' }, 'No curated snippets for this component yet. Ask an agent: /cartograph-snippets ' + c.name));
+  } else if (tab === 'deps') {
+    function edgeTable(list, key, title) {
+      return h('section', { class: 'section' }, h('h2', null, title + ' · ' + list.length), list.length ? h('div', { class: 'box scrollx' }, h('table', { class: 't' },
+        h('thead', null, h('tr', null, h('th', null, 'Component'), h('th', null, 'Relationship'), h('th', null, 'Evidence'))),
+        h('tbody', null, list.map(function (e) {
+          return h('tr', null, h('td', null, h('a', { href: '#/component/' + encodeURIComponent(e[key]), style: 'font-weight:500;color:var(--ink)' }, cname(e[key]))),
+            h('td', null, (e.kind || 'calls') + (e.label ? ' · ' + e.label : '')), h('td', null, (e.evidence || []).length ? (e.evidence || []).map(function (ev) { return h('div', null, evRef(ev)); }) : h('span', { class: 'muted small' }, '—')));
+        })))) : h('div', { class: 'box empty' }, 'None in the model.'));
+    }
+    main.appendChild(edgeTable(outs, 'to', 'Depends on')); main.appendChild(edgeTable(ins, 'from', 'Used by'));
+  } else if (tab === 'history') {
+    if (!cf.weekly) main.appendChild(emptyFacts());
+    else {
+      main.appendChild(h('section', { class: 'box pad section' }, sectionHead('Weekly commits', h('span', { class: 'small muted' }, '13 weeks')), weekChart(cf.weekly)));
+      var rc = (F.recent || []).filter(function (x) { return (x.components || []).indexOf(id) >= 0; });
+      main.appendChild(h('section', { class: 'section' }, h('h2', null, 'Recent commits'), rc.length ? commitList(rc) : h('div', { class: 'box empty' }, 'None among the latest 40 commits.')));
+      var hs = (F.hotspots || []).filter(function (x) { return x.component === id; });
+      if (hs.length) main.appendChild(h('section', { class: 'section' }, h('h2', null, 'Hotspots in this component'), hotspotTable(hs, false)));
+    }
+  } else if (tab === 'interfaces') {
+    main.appendChild(ifaces.length ? table(620, [th('Kind', 0, 'width:120px'), th('Method', 0, 'width:80px'), th('Name'), th('Declared at')], ifaces.slice(0, 200).map(function (a) {
+      return h('tr', null, h('td', { class: 'muted small' }, a.kind), h('td', { class: 'mono' }, a.method || ''), h('td', { class: 'mono', style: 'color:var(--ink)' }, a.name || '—'), h('td', null, evRef({ path: a.path, line: a.line })));
+    })) : h('div', { class: 'box empty' }, 'No routes, tools, topics, jobs or tables found in this component’s code.'));
+  } else if (tab === 'evidence') {
+    main.appendChild(evidence.length ? h('div', { class: 'box scrollx' }, h('table', { class: 't' }, h('thead', null, h('tr', null, h('th', null, 'Reference'), h('th', null, 'Supports'), h('th', null, 'Note'))),
+      h('tbody', null, evidence.map(function (x) { return h('tr', null, h('td', null, evRef(x[0], { full: true })), h('td', null, x[1]), h('td', { class: 'muted' }, x[0].note || '')); })))) : h('div', { class: 'box empty' }, 'No evidence recorded. Claims without evidence should be treated as unverified.'));
+  }
+  var side = h('aside', { class: 'col-side' });
+  side.appendChild(h('section', { class: 'box' },
+    h('div', { class: 'between', style: 'padding:12px 16px;border-bottom:1px solid var(--line)' }, h('h2', { style: 'font-size:14px' }, 'Facts'), h('span', { class: 'small muted' }, 'Computed from git · 90 days')),
+    h('dl', { class: 'facts' },
+      h('div', null, h('dt', null, 'Files'), h('dd', null, fmt(cf.files))),
+      h('div', null, h('dt', null, 'Lines'), h('dd', null, fmt(cf.loc))),
+      h('div', null, h('dt', null, 'Commits'), h('dd', null, fmt(cf.commits), ' ', pct(cf.commits || 0, cf.prior) ? h('small', null, pct(cf.commits || 0, cf.prior).t) : null)),
+      h('div', null, h('dt', null, 'Authors'), h('dd', null, fmt(cf.authors))),
+      cf.fixRatio != null ? h('div', null, h('dt', null, 'Fix commits'), h('dd', null, cf.fixRatio + '%')) : null,
+      cf.aiShare != null ? h('div', null, h('dt', null, 'AI-assisted'), h('dd', null, cf.aiShare + '%')) : null,
+      F.age && F.age.components[id] ? h('div', null, h('dt', null, 'Median file age'), h('dd', null, F.age.components[id].medianDays >= 365 ? (F.age.components[id].medianDays / 365).toFixed(1) + 'y' : F.age.components[id].medianDays + 'd')) : null,
+      F.structure && F.structure.testReach[id] != null ? h('div', null, h('dt', null, 'Test files'), h('dd', null, F.structure.testReach[id])) : null),
+    cf.weekly ? h('div', { style: 'padding:4px 16px 14px;display:flex;flex-direction:column;gap:6px' }, h('span', { class: 'small muted' }, 'Weekly commits'), weekBars(cf.weekly),
+      F.repo ? h('div', { class: 'between small muted' }, h('span', null, shortDate(F.repo.weekStarts[0])), h('span', null, shortDate(F.repo.weekStarts[F.repo.weekStarts.length - 1]))) : null) : null,
+    cf.last ? h('div', { class: 'small muted', style: 'padding:0 16px 12px' }, 'Last change ' + shortDate(cf.last.date) + ' · ' + cf.last.author) : null));
+  if ((cf.owners || []).length) side.appendChild(h('section', { class: 'box pad section' }, sectionHead('Ownership', h('span', { class: 'small', style: 'font-weight:600;color:' + (cf.busFactor <= 1 ? 'var(--warm)' : 'var(--muted)') }, 'Bus factor ' + cf.busFactor)),
+    cf.owners.slice(0, 5).map(function (o) { return h('div', { class: 'ownrow', title: o.lastActive ? 'Last commit ' + o.lastActive : '' }, h('span', { class: 'name', style: o.active === false ? 'color:var(--faint);text-decoration:line-through' : '' }, o.name), h('span', { class: 'bar t6' }, h('span', { style: 'width:' + o.share + '%' + (o.active === false ? ';background:#C9CED6' : '') })), h('span', { class: 'num muted', style: 'text-align:right' }, o.share + '%')); }),
+    cf.activeBusFactor != null && cf.activeBusFactor !== cf.busFactor ? h('span', { class: 'small muted' }, 'Struck through: no commits in 90 days. Active bus factor ' + cf.activeBusFactor + '.') : null));
+  side.appendChild(h('section', { class: 'box pad section', style: 'gap:6px' }, h('h2', { style: 'font-size:14px' }, 'Depends on'),
+    outs.length ? outs.map(function (e) { return h('a', { class: 'deprow', href: '#/component/' + encodeURIComponent(e.to) }, h('span', { style: 'font-weight:500' }, cname(e.to)), h('span', { class: 'l' }, e.label || e.kind || '')); }) : h('span', { class: 's13 muted' }, 'Nothing in the model'),
+    h('h2', { style: 'font-size:14px;margin-top:8px' }, 'Used by'),
+    ins.length ? ins.map(function (e) { return h('a', { class: 'deprow', href: '#/component/' + encodeURIComponent(e.from) }, h('span', { style: 'font-weight:500' }, cname(e.from)), h('span', { class: 'l' }, e.label || e.kind || '')); }) : h('span', { class: 's13 muted' }, 'Entry point')));
+  if (risks.length) side.appendChild(h('section', { class: 'box pad section' }, h('h2', { style: 'font-size:14px' }, 'Risks'), risks.map(function (rk) {
+    return h('a', { href: '#/risks/' + encodeURIComponent(rk.id), class: 'row', style: 'gap:10px;align-items:flex-start;flex-wrap:nowrap;color:var(--ink)' }, h('span', { style: 'margin-top:1px' }, sevPill(rk.severity)), h('span', { class: 's13' }, rk.title));
+  })));
+  page.appendChild(h('div', { class: 'cols' }, main, side));
+  return page;
+};
+function keyFilesTable(c) {
+  return h('section', { class: 'section' }, h('h2', null, 'Key files'), h('div', { class: 'box scrollx' }, h('table', { class: 't', style: 'min-width:560px' },
+    h('thead', null, h('tr', null, h('th', null, 'File'), h('th', null, 'Role'), h('th', { class: 'r' }, 'Lines'), h('th', { class: 'r' }, 'Commits · 90d'), h('th', null, 'Last change'))),
+    h('tbody', null, c.keyFiles.map(function (f) {
+      var fs = (F.files || {})[f.path] || {};
+      return h('tr', null, h('td', null, evRef({ path: f.path })), h('td', { style: 'color:var(--ink-2)' }, f.role || ''), h('td', { class: 'r' }, fmt(fs.loc)), h('td', { class: 'r' }, fs.commits != null ? fmt(fs.commits) : '0'),
+        h('td', { class: 'muted' }, fs.last ? shortDate(fs.last.date) + ' · ' + fs.last.author : '—'));
+    })))));
+}
+function weekChart(series) {
+  var mx = Math.max.apply(null, series.concat([1])), top = Math.max(4, Math.ceil(mx / 4) * 4);
+  var peak = series.indexOf(mx), starts = (F.repo && F.repo.weekStarts) || [];
+  return h('div', { class: 'chart' },
+    h('div', { class: 'yax' }, h('span', null, top), h('span', null, top / 2), h('span', null, '0')),
+    h('div', { style: 'flex:1 1 auto;display:flex;flex-direction:column;gap:6px;min-width:0' },
+      h('div', { class: 'plot', role: 'img', 'aria-label': 'Weekly commits: ' + series.join(', ') }, series.map(function (v, i) {
+        return h('span', { class: 'b' + (i === peak && v ? ' peak' : '') }, h('span', null, v || ''), h('span', { style: 'height:' + Math.round(v / top * 140) + 'px' }));
+      })),
+      h('div', { class: 'xax' }, series.map(function (_, i) { return h('span', null, i % 2 === 0 && starts[i] ? shortDate(starts[i]) : ''); }))));
+}
+function commitList(list) {
+  return h('ul', { class: 'list box', style: 'overflow:hidden' }, list.map(function (c) {
+    return h('li', { style: 'padding:10px 16px;display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:4px 14px;align-items:baseline' },
+      h('code', { style: 'color:var(--blue)' }, c.sha),
+      h('span', { style: 'display:flex;flex-direction:column;gap:4px;min-width:0' }, h('span', { class: 's13', style: 'font-weight:500' }, c.subject),
+        h('span', { class: 'row', style: 'gap:6px' }, (c.components || []).map(function (k) { return h('a', { class: 'pill', href: '#/component/' + encodeURIComponent(k), style: 'font-size:11px;padding:0 6px' }, cname(k)); }),
+          c.ai ? h('span', { class: 'cmeta ai' }, 'AI · ' + c.ai) : null, c.fix ? h('span', { class: 'cmeta fix' }, 'fix') : null, c.pr ? h('span', { class: 'cmeta prn' }, '#' + c.pr) : null,
+          c.files != null ? h('span', { class: 'small muted' }, c.files + ' file' + (c.files === 1 ? '' : 's')) : null)),
+      h('span', { class: 'small', style: 'color:var(--ink-3);text-align:right;white-space:nowrap' }, c.author + ' · ' + shortDate(c.date)));
+  }));
+}
+function hotspotTable(list, showComp) {
+  return h('div', { class: 'box scrollx' }, h('table', { class: 't', style: 'min-width:720px' },
+    h('thead', null, h('tr', null, h('th', null, 'File'), showComp ? h('th', null, 'Component') : null, h('th', { class: 'r' }, 'Commits'), h('th', { class: 'r' }, 'Churn'), h('th', { class: 'r' }, 'Authors'), h('th', { class: 'r' }, 'Lines'), h('th', { style: 'width:140px' }, 'Score'))),
+    h('tbody', null, list.map(function (x) {
+      return h('tr', null, h('td', null, evRef({ path: x.path }), x.isNew ? h('span', { class: 'pill gray', style: 'margin-left:8px;font-size:11px;padding:0 6px' }, 'New') : null),
+        showComp ? h('td', { style: 'color:var(--ink-2)' }, x.component ? h('a', { href: '#/component/' + encodeURIComponent(x.component), style: 'color:var(--ink-2)' }, cname(x.component)) : h('span', { class: 'muted' }, 'Unmapped')) : null,
+        h('td', { class: 'r' }, x.commits), h('td', { class: 'r mono' }, h('span', { style: 'color:var(--add)' }, '+' + fmt(x.add)), ' ', h('span', { style: 'color:var(--del)' }, '−' + fmt(x.del))),
+        h('td', { class: 'r' }, x.authors), h('td', { class: 'r' }, fmt(x.loc)), h('td', null, h('span', { class: 'bar t6', style: 'display:block' }, h('span', { style: 'width:' + x.score + '%' }))));
+    }))));
+}
+
+VIEWS.flows = function (r) {
+  renderSide('flows');
+  var list = M.flows;
+  if (r.query.through) list = list.filter(function (f) { return (f.steps || []).some(function (s) { return s.component === r.query.through; }); });
+  if (!M.flows.length) { crumbs([['Flows']]); return h('div', { class: 'box empty' }, 'No flows in the model yet. Ask an agent: /cartograph-architecture trace the main request paths.'); }
+  var f = FLOW[r.args[0]] || list[0] || M.flows[0], steps = f.steps || [];
+  var si = Math.max(0, Math.min(steps.length - 1, parseInt(r.args[1] || '1', 10) - 1 || 0));
+  crumbs([['Flows', '#/flows'], [f.name]]);
+  function href(fid, s) { return '#/flows/' + encodeURIComponent(fid) + '/' + (s + 1) + (r.query.through ? '?through=' + encodeURIComponent(r.query.through) : ''); }
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' });
+  if (r.query.through) page.appendChild(h('div', { class: 'callout info text s13' }, 'Showing flows through ', h('strong', null, cname(r.query.through)), ' · ', h('a', { href: '#/flows/' + encodeURIComponent(f.id) }, 'Show all flows')));
+  page.appendChild(h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Flows' }, list.map(function (fl) {
+    return h('button', { type: 'button', role: 'tab', 'aria-selected': String(fl.id === f.id), onclick: function () { location.hash = href(fl.id, 0); } }, fl.name);
+  })));
+  page.appendChild(h('div', { style: 'display:flex;flex-direction:column;gap:8px;max-width:820px' },
+    h('div', { class: 'row', style: 'gap:8px 12px' }, h('h1', null, f.name), f.trigger ? h('code', { style: 'background:var(--hover);border-radius:4px;padding:2px 8px;color:var(--ink-2)' }, f.trigger) : null),
+    f.summary ? h('p', { style: 'margin:0;line-height:1.6;color:var(--ink-2)' }, f.summary) : null));
+  page.appendChild(h('div', { class: 'lanepath', 'aria-label': 'Path through components' }, steps.map(function (s, i) {
+    return h('span', { class: 'row', style: 'gap:6px' }, i ? h('span', { style: 'color:var(--faint);display:inline-flex' }, icon(I.arrow)) : null,
+      h('a', { class: 'chip' + (i === si ? ' on' : ''), href: href(f.id, i) }, cname(s.component)));
+  })));
+  var stepList = h('ol', { class: 'list box steps', 'aria-label': 'Steps', style: 'flex:1 1 340px;min-width:0;overflow:hidden;align-self:flex-start' }, steps.map(function (s, i) {
+    var sn = s.snippet && SNIP[s.snippet];
+    return h('li', null, h('button', { type: 'button', 'aria-pressed': String(i === si), onclick: function () { location.hash = href(f.id, i); } },
+      h('span', { class: 'numcircle' + (i === si ? ' on' : '') }, i + 1),
+      h('span', { style: 'display:flex;flex-direction:column;gap:3px;min-width:0' }, h('span', { class: 'eyebrow', style: 'color:var(--ink-3)' }, cname(s.component)), h('span', null, s.action),
+        h('span', { class: 'small', style: 'color:' + (sn ? 'var(--blue)' : 'var(--muted)') }, sn ? 'Snippet · ' + sn.title : (s.evidence ? short(s.evidence.path) + (s.evidence.line ? ':' + s.evidence.line : '') : 'No reference')))));
+  }));
+  var s = steps[si] || {}, sn = s.snippet && SNIP[s.snippet];
+  var nav = h('div', { class: 'row', style: 'gap:8px' },
+    h('a', { class: 'btn iconbtn', href: href(f.id, Math.max(0, si - 1)), 'aria-label': 'Previous step', style: 'width:34px;height:34px' }, icon(I.prev, 14)),
+    h('a', { class: 'btn iconbtn', href: href(f.id, Math.min(steps.length - 1, si + 1)), 'aria-label': 'Next step', style: 'width:34px;height:34px' }, icon(I.chev, 14)));
+  var right;
+  if (sn) {
+    right = h('section', { 'aria-label': 'Code for the selected step', style: 'flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:10px' },
+      h('div', { class: 'between' }, h('span', { class: 's13 muted' }, 'Step ' + (si + 1) + ' of ' + steps.length + ' · ' + cname(s.component)), nav), codeCard(sn));
+  } else {
+    right = h('section', { class: 'codecard', style: 'flex:999 1 560px;min-width:0' },
+      h('div', { class: 'codehead' }, h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', { class: 'small muted' }, 'Step ' + (si + 1) + ' · ' + cname(s.component)), h('span', { style: 'font-weight:600' }, s.action || ''), s.evidence ? evRef(s.evidence, { full: true }) : null), nav),
+      h('div', { style: 'padding:28px 20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start' },
+        h('span', { style: 'font-weight:600' }, 'No curated snippet for this step'),
+        h('span', { class: 's13', style: 'color:var(--ink-3);max-width:520px' }, 'The model links this step to its source location as evidence. Promote it to a key snippet if reviewers keep opening it.'),
+        s.evidence ? h('code', { style: 'background:var(--hover);border-radius:6px;padding:8px 12px;color:var(--ink-2)' }, '/cartograph-snippets ' + s.evidence.path + (s.evidence.line ? ':' + s.evidence.line : '')) : null));
+  }
+  page.appendChild(h('div', { class: 'cols', style: 'gap:20px' }, stepList, right));
+  return page;
+};
+
+VIEWS.code = function (r) {
+  renderSide('code'); crumbs([['Key code']]);
+  var kind = r.query.kind || 'all', comp = r.query.c || 'all', focus = r.args[0];
+  var kinds = {}; M.snippets.forEach(function (s) { kinds[s.kind || 'other'] = (kinds[s.kind || 'other'] || 0) + 1; });
+  var list = M.snippets.filter(function (s) { return (kind === 'all' || (s.kind || 'other') === kind) && (comp === 'all' || s.component === comp); });
+  function href(k, c) { var q = []; if (k !== 'all') q.push('kind=' + k); if (c !== 'all') q.push('c=' + encodeURIComponent(c)); return '#/code' + (q.length ? '?' + q.join('&') : ''); }
+  var stale = M.snippets.filter(function (s) { var d = (F.snippets || {})[s.id]; return d && (d.status === 'stale' || d.status === 'missing'); }).length;
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' },
+    h('div', { class: 'row', style: 'justify-content:space-between;align-items:flex-end;gap:16px' },
+      h('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:720px' }, h('h1', null, 'Key code'),
+        h('p', { class: 'sub' }, 'The handful of places that explain the system: entry points, core logic, invariants and gotchas. Each is pinned to a commit and re-checked against the code on every build.')),
+      h('label', { class: 'row s13', style: 'gap:8px' }, 'Component', h('select', { class: 'filter-in', style: 'min-width:180px', onchange: function (e) { location.hash = href(kind, e.target.value); } },
+        h('option', { value: 'all' }, 'All components'), M.components.filter(function (c) { return M.snippets.some(function (s) { return s.component === c.id; }); }).map(function (c) { return h('option', { value: c.id, selected: comp === c.id }, c.name); })))),
+    h('div', { class: 'filterchips', role: 'group', 'aria-label': 'Filter by kind' },
+      [['all', 'All', M.snippets.length]].concat(Object.keys(kinds).sort().map(function (k) { return [k, k.replace('-', ' '), kinds[k]]; })).map(function (k) {
+        return h('button', { type: 'button', 'aria-pressed': String(kind === k[0]), onclick: function () { location.hash = href(k[0], comp); } }, k[1].charAt(0).toUpperCase() + k[1].slice(1), h('span', { class: 'n' }, k[2]));
+      })));
+  if (stale) page.appendChild(h('div', { class: 'callout text s13' }, h('strong', null, stale + ' snippet' + (stale === 1 ? '' : 's') + ' no longer match the code.'), ' Run ', h('code', null, '/cartograph-refresh'), ' to re-extract or retire them.'));
+  if (!list.length) page.appendChild(h('div', { class: 'box empty' }, M.snippets.length ? 'No snippets match these filters.' : 'No snippets yet. Ask an agent: /cartograph-snippets'));
+  list.forEach(function (s) {
+    var cc = codeCard(s, { titlePrefix: null });
+    page.appendChild(h('div', { style: 'display:flex;flex-direction:column;gap:6px' },
+      h('div', { class: 'row small muted', style: 'gap:8px' }, s.component ? compLink(s.component) : null, (M.flows.filter(function (f) { return (f.steps || []).some(function (st) { return st.snippet === s.id; }); })).map(function (f) { return h('a', { class: 'pill', href: '#/flows/' + encodeURIComponent(f.id) }, 'Flow · ' + f.name); })),
+      cc));
+  });
+  if (focus) setTimeout(function () { var el = document.getElementById('snippet-' + focus); if (el) el.scrollIntoView({ block: 'start' }); }, 0);
+  return page;
+};
+
+// ------------------------------------------------------------------ changes & trends (tabbed)
+function tabsBar(base, current, list) {
+  return h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Sections' }, list.map(function (t) {
+    return h('button', { type: 'button', role: 'tab', 'aria-selected': String(current === t[0]), onclick: function () { location.hash = base + (t[0] === list[0][0] ? '' : '?tab=' + t[0]); } }, t[1], t[2] != null && t[2] !== '' ? h('span', { class: 'c' }, t[2]) : null);
+  }));
+}
+function meter(pctv, color) { return h('span', { class: 'bar t6', style: 'display:block;min-width:60px' }, h('span', { style: 'width:' + Math.max(0, Math.min(100, pctv || 0)) + '%' + (color ? ';background:' + color : '') })); }
+function compCell(id) { return id ? h('a', { href: '#/component/' + encodeURIComponent(id), style: 'color:var(--ink-2)' }, cname(id)) : h('span', { class: 'muted' }, 'Unmapped'); }
+function th(label, right, style) { return h('th', { class: right ? 'r' : '', style: style || null }, label); }
+function table(minw, heads, rows) { return h('div', { class: 'box scrollx' }, h('table', { class: 't', style: 'min-width:' + minw + 'px' }, h('thead', null, h('tr', null, heads)), h('tbody', null, rows))); }
+
+VIEWS.changes = function (r) {
+  renderSide('changes'); crumbs([['Changes & trends']]);
+  var R = F.repo, tab = r.query.tab || 'activity';
+  var hidden = F.coupling ? F.coupling.components.filter(function (p) { return p.hidden; }).length : 0;
+  var orphaned = F.knowledge ? Object.keys(F.knowledge.components).filter(function (c) { return F.knowledge.components[c].orphanedPct >= 50 && COMP[c]; }).length : 0;
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' },
+    h('div', { class: 'row', style: 'justify-content:space-between;align-items:flex-end' },
+      h('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:760px' }, h('h1', null, 'Changes & trends'),
+        h('p', { class: 'sub' }, 'Computed from git history and mapped onto the model’s components. Activity compares the last 90 days with the 90 before; coupling, defects, knowledge and AI use the full history window' + (R ? ' (' + (R.historyDays || 365) + ' days)' : '') + '.')),
+      R ? h('span', { class: 'pill' }, 'As of ' + shortDate((F.head || {}).date) + (R.truncated ? ' · history truncated' : '')) : null),
+    tabsBar('#/changes', tab, [['activity', 'Activity'], ['hotspots', 'Hotspots & age', (F.hotspots || []).length || null], ['coupling', 'Coupling', hidden || null], ['knowledge', 'Knowledge', orphaned || null], ['ai', 'AI-assisted', F.ai ? F.ai.recentShare + '%' : null]]));
+  if (!R) { page.appendChild(emptyFacts()); return page; }
+  var body = { activity: changesActivity, hotspots: changesHotspots, coupling: changesCoupling, knowledge: changesKnowledge, ai: changesAI }[tab] || changesActivity;
+  page.appendChild(body());
+  return page;
+};
+
+function changesActivity() {
+  var R = F.repo, wrap = h('div', { style: 'display:flex;flex-direction:column;gap:24px' });
+  var sm = F.sinceModel;
+  if (sm && sm.commits && !M.auto) {
+    var comps = Object.keys(sm.components || {}).sort(function (a, b) { return sm.components[b] - sm.components[a]; });
+    wrap.appendChild(h('section', { class: 'callout', 'aria-label': 'Since the model was built' },
+      h('div', { style: 'flex:1 1 420px;display:flex;flex-direction:column;gap:2px' },
+        h('span', { style: 'font-weight:600' }, sm.commits + ' commit' + (sm.commits === 1 ? '' : 's') + ' since the model was built' + ((M.generated || {}).at ? ' on ' + shortDate(M.generated.at) : '')),
+        h('span', { class: 's13', style: 'color:var(--ink-2)' }, sm.files + ' files in ' + comps.length + ' area' + (comps.length === 1 ? '' : 's') + ': ' + comps.slice(0, 5).map(function (k) { return cname(k) + ' (' + sm.components[k] + ')'; }).join(', ') + '.')),
+      h('code', null, '/cartograph-refresh')));
+  }
+  var d = pct(R.commits, R.prior);
+  wrap.appendChild(h('section', { class: 'stats', 'aria-label': 'Window totals' },
+    stat('Commits', fmt(R.commits), d ? d.t + ' vs prior 90 days' : ''),
+    stat('Files changed', fmt(R.filesChanged), fmt(R.filesAdded) + ' new · ' + fmt(R.filesDeleted) + ' deleted'),
+    stat('Authors', fmt(R.authors), R.newAuthors != null ? R.newAuthors + ' not active in the prior ' + ((R.historyDays || 365) - 90) + ' days' : ''),
+    stat('Lines', '+' + kfmt(R.linesAdded), '−' + kfmt(R.linesDeleted) + ' removed')));
+  var mx = Math.max.apply(null, R.weekly), pk = R.weekly.indexOf(mx);
+  wrap.appendChild(h('section', { class: 'box pad section', style: 'padding:16px 20px;gap:12px' }, sectionHead('Weekly commits', h('span', { class: 'small muted' }, 'Peak ' + mx + ' · week of ' + shortDate(R.weekStarts[pk]))), weekChart(R.weekly)));
+  var trend = M.components.filter(function (c) { return CF[c.id] && (CF[c.id].commits || CF[c.id].prior); }).map(function (c) { var f = CF[c.id]; return { c: c, f: f, d: pct(f.commits || 0, f.prior) }; })
+    .sort(function (a, b) { return (b.f.commits || 0) - (a.f.commits || 0); });
+  wrap.appendChild(h('section', { class: 'section' }, sectionHead('Components by activity', h('span', { class: 'small muted' }, 'Last 90 days vs the 90 before')),
+    trend.length ? table(720, [th('Component'), th('Commits', 1), th('Prior', 1), th('Change', 1), th('Authors', 1), th('13 weeks')], trend.map(function (x) {
+      var mxw = Math.max.apply(null, (x.f.weekly || [0]).concat([1]));
+      return h('tr', null, h('td', null, h('a', { href: '#/component/' + encodeURIComponent(x.c.id) + '?tab=history', style: 'font-weight:500;color:var(--ink)' }, x.c.name)),
+        h('td', { class: 'r', style: 'font-weight:600' }, x.f.commits || 0), h('td', { class: 'r muted' }, x.f.prior == null ? '—' : x.f.prior), h('td', { class: 'r' }, deltaEl(x.d)),
+        h('td', { class: 'r' }, x.f.authors || 0),
+        h('td', null, h('span', { class: 'minis' + (x.d && x.d.c === 'up' ? ' hot' : '') }, (x.f.weekly || []).map(function (v) { return h('span', { style: v ? 'height:' + Math.max(3, Math.round(v / mxw * 20)) + 'px' : 'height:1px;background:#D5DAE1' }); }))));
+    })) : h('div', { class: 'box empty' }, 'No component activity in this window.')));
+  wrap.appendChild(h('section', { class: 'section' }, sectionHead('Recent commits', h('a', { href: '#/prs', class: 's13', style: 'font-weight:500' }, 'Pull requests')), commitList((F.recent || []).slice(0, 15))));
+  return wrap;
+}
+
+function changesHotspots() {
+  var wrap = h('div', { style: 'display:flex;flex-direction:column;gap:24px' });
+  if ((F.hotspots || []).length) wrap.appendChild(h('section', { class: 'section' }, sectionHead('Hotspots', h('span', { class: 'small muted' }, 'Commits in 90 days × file size. Large files that keep changing are where review cost and defects concentrate.')), hotspotTable(F.hotspots.slice(0, 15), true)));
+  var Dd = F.defects;
+  if (Dd && Dd.files.length) {
+    wrap.appendChild(h('section', { class: 'section' }, sectionHead('Defect hotspots', h('span', { class: 'small muted' }, Dd.fixCommits + ' of ' + Dd.commits + ' commits in ' + Dd.windowDays + ' days are fixes (subject says fix, bug, hotfix, regression…)')),
+      table(640, [th('File'), th('Component'), th('Fix commits', 1), th('Lines', 1), th('Score', 0, 'width:140px')], Dd.files.slice(0, 12).map(function (x) {
+        return h('tr', null, h('td', null, evRef({ path: x.path })), h('td', null, compCell(x.component)), h('td', { class: 'r' }, x.fixes), h('td', { class: 'r' }, fmt(x.loc)), h('td', null, meter(x.score, 'var(--warm-dot)')));
+      }))));
+  }
+  var A = F.age;
+  if (A) {
+    var shades = ['#0047BB', '#5B86D6', '#A9C0EA', '#C9CED6', '#E2E5EA'];
+    var rows = M.components.filter(function (c) { return A.components[c.id]; }).map(function (c) { return [c, A.components[c.id], CF[c.id] || {}]; })
+      .sort(function (a, b) { return b[1].medianDays - a[1].medianDays; });
+    wrap.appendChild(h('section', { class: 'box pad section', style: 'padding:16px 20px;gap:12px' },
+      sectionHead('Code age', h('span', { class: 'small muted' }, 'Lines by time since the file last changed')),
+      h('div', { style: 'display:flex;height:12px;border-radius:3px;overflow:hidden;gap:2px', role: 'img', 'aria-label': A.buckets.map(function (b) { return b.label + ' ' + b.pct + '%'; }).join(', ') },
+        A.buckets.map(function (b, i) { return b.pct ? h('span', { style: 'flex:' + b.pct + ';background:' + shades[i] }) : null; })),
+      h('div', { class: 'row small', style: 'gap:6px 18px;color:var(--ink-2)' }, A.buckets.map(function (b, i) { return h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'width:8px;height:8px;border-radius:2px;background:' + shades[i] }), b.label + ' ' + b.pct + '%'); }))));
+    if (rows.length) wrap.appendChild(h('section', { class: 'section' }, sectionHead('Components by age', h('span', { class: 'small muted' }, 'Old and still changing is legacy that is actively risky; old and quiet is stable')),
+      table(720, [th('Component'), th('Median file age', 1), th('Untouched 2y+', 1), th('Changed < 90d', 1), th('Commits · 90d', 1), th('Read')], rows.map(function (x) {
+        var c = x[0], a = x[1], f = x[2], read = a.stalePct >= 40 && (f.commits || 0) >= 5 ? ['Old and active', 'up'] : a.stalePct >= 60 ? ['Stable legacy', 'muted'] : a.freshPct >= 60 ? ['New code', 'muted'] : ['', 'muted'];
+        return h('tr', null, h('td', null, h('a', { href: '#/component/' + encodeURIComponent(c.id), style: 'font-weight:500;color:var(--ink)' }, c.name)),
+          h('td', { class: 'r' }, a.medianDays >= 365 ? (a.medianDays / 365).toFixed(1) + 'y' : a.medianDays + 'd'), h('td', { class: 'r' }, a.stalePct + '%'), h('td', { class: 'r' }, a.freshPct + '%'),
+          h('td', { class: 'r' }, f.commits || 0), h('td', { class: read[1] + ' small' }, read[0]));
+      }))));
+  }
+  return wrap;
+}
+
+function changesCoupling() {
+  var C = F.coupling, wrap = h('div', { style: 'display:flex;flex-direction:column;gap:24px' });
+  if (!C) return emptyFacts();
+  wrap.appendChild(h('p', { class: 'sub s13', style: 'max-width:820px' }, 'Coupling is how often two things change in the same commit (degree = shared commits ÷ average commits of the two). Pairs that change together without a dependency in the code or the model usually share something hidden: a table, a message format, a copied rule. Commits touching more than ' + C.maxFilesPerCommit + ' files are ignored.'));
+  var hiddenRows = C.components.filter(function (p) { return p.hidden; });
+  if (hiddenRows.length) wrap.appendChild(h('div', { class: 'callout text s13' }, h('strong', null, hiddenRows.length + ' hidden dependenc' + (hiddenRows.length === 1 ? 'y' : 'ies') + ': '),
+    hiddenRows.slice(0, 4).map(function (p, i) { return [i ? ', ' : '', cname(p.a) + ' ~ ' + cname(p.b) + ' (' + p.degree + '%)']; }), '. They change together but nothing in the code or model connects them.'));
+  wrap.appendChild(h('section', { class: 'section' }, sectionHead('Component pairs', h('span', { class: 'small muted' }, 'Code, schema and interface files only')),
+    C.components.length ? table(760, [th('Components'), th('Shared commits', 1), th('Degree', 0, 'width:160px'), th('In model'), th('In code'), th('')], C.components.slice(0, 25).map(function (p) {
+      return h('tr', { style: p.hidden ? 'background:var(--warm-wash)' : null }, h('td', null, compCell(p.a), h('span', { class: 'muted' }, '  ~  '), compCell(p.b)),
+        h('td', { class: 'r' }, p.shared), h('td', null, h('span', { class: 'row', style: 'gap:8px;flex-wrap:nowrap' }, meter(p.degree, p.hidden ? 'var(--warm-dot)' : null), h('span', { class: 'num small', style: 'min-width:32px' }, p.degree + '%'))),
+        h('td', null, p.inModel ? 'Yes' : h('span', { class: 'muted' }, 'No')), h('td', null, p.inCode == null ? h('span', { class: 'muted' }, '—') : p.inCode ? 'Yes' : h('span', { class: 'muted' }, 'No')),
+        h('td', null, p.hidden ? h('span', { class: 'pill', style: 'color:var(--md-fg);border-color:#E9C4A6' }, 'Hidden') : null));
+    })) : h('div', { class: 'box empty' }, 'No component pairs change together often enough to report.')));
+  wrap.appendChild(h('section', { class: 'section' }, sectionHead('File pairs', h('span', { class: 'small muted' }, 'Degree ≥ 40% · no import between them first · a file and its own test are left out')),
+    C.files.length ? table(860, [th('File A'), th('File B'), th('Shared', 1), th('P(B|A)', 1), th('P(A|B)', 1), th('Degree', 0, 'width:120px'), th('Import')], C.files.slice(0, 25).map(function (p) {
+      return h('tr', null, h('td', null, evRef({ path: p.a })), h('td', null, evRef({ path: p.b })), h('td', { class: 'r' }, p.shared), h('td', { class: 'r' }, Math.round(p.pBgivenA * 100) + '%'), h('td', { class: 'r' }, Math.round(p.pAgivenB * 100) + '%'),
+        h('td', null, meter(p.degree)), h('td', null, p.inCode == null ? '—' : p.inCode ? 'Yes' : h('span', { class: 'muted' }, 'No')));
+    })) : h('div', { class: 'box empty' }, 'No strongly coupled file pairs.')));
+  return wrap;
+}
+
+function changesKnowledge() {
+  var K = F.knowledge, wrap = h('div', { style: 'display:flex;flex-direction:column;gap:24px' });
+  if (!K) return emptyFacts();
+  wrap.appendChild(h('p', { class: 'sub s13', style: 'max-width:820px' }, 'Who holds the knowledge of each area, from who changed it over the history window. Inactive = no commits in the last ' + K.inactiveDays + ' days. Orphaned share = changes made by people who are now inactive. Bus factor = how many people cover half the changes. This is a map of where knowledge sits, not a measure of anyone’s performance.'));
+  var rows = M.components.filter(function (c) { return K.components[c.id] && c.layer !== 'external'; }).map(function (c) { return [c, K.components[c.id], CF[c.id] || {}]; })
+    .sort(function (a, b) { return (b[1].orphanedPct - a[1].orphanedPct) || (a[1].activeBusFactor - b[1].activeBusFactor); });
+  wrap.appendChild(h('section', { class: 'stats' },
+    stat('Orphaned areas', rows.filter(function (x) { return x[1].orphanedPct >= 50; }).length, 'half or more of changes by inactive people'),
+    stat('Single-owner areas', rows.filter(function (x) { return x[1].activeBusFactor <= 1 && (x[2].commits || 0) > 0; }).length, 'active bus factor 1, still changing'),
+    stat('Inactive contributors', K.inactiveAuthors, 'committed in the window, not in the last ' + K.inactiveDays + ' days')));
+  wrap.appendChild(table(900, [th('Component'), th('Most active owner'), th('Orphaned share', 0, 'width:180px'), th('Bus factor', 1), th('Active', 1), th('Commits · 90d', 1), th('Last change')], rows.map(function (x) {
+    var c = x[0], k = x[1], f = x[2], act = (f.owners || []).filter(function (o) { return o.active; })[0], top = (f.owners || [])[0];
+    var warn = k.orphanedPct >= 50 || (k.activeBusFactor <= 1 && (f.commits || 0) > 0);
+    return h('tr', null, h('td', null, h('a', { href: '#/component/' + encodeURIComponent(c.id) + '?tab=history', style: 'font-weight:500;color:var(--ink)' }, c.name)),
+      h('td', null, act ? h('span', null, h('span', { class: 'mono' }, act.name), h('span', { class: 'muted small' }, ' · ' + act.share + '%')) : h('span', { class: 'muted small' }, top ? 'None active (was ' + top.name + ')' : '—')),
+      h('td', null, h('span', { class: 'row', style: 'gap:8px;flex-wrap:nowrap' }, meter(k.orphanedPct, k.orphanedPct >= 50 ? 'var(--warm-dot)' : 'var(--blue-2)'), h('span', { class: 'num small', style: 'min-width:38px' }, Math.round(k.orphanedPct) + '%'))),
+      h('td', { class: 'r' }, k.busFactor), h('td', { class: 'r', style: 'font-weight:600;color:' + (warn ? 'var(--warm)' : 'var(--ink-2)') }, k.activeBusFactor),
+      h('td', { class: 'r' }, f.commits || 0), h('td', { class: 'muted small' }, f.last ? shortDate(f.last.date) + ' · ' + f.last.author : '—'));
+  })));
+  return wrap;
+}
+
+function changesAI() {
+  var A = F.ai, wrap = h('div', { style: 'display:flex;flex-direction:column;gap:24px' });
+  if (!A) return emptyFacts();
+  wrap.appendChild(h('p', { class: 'sub s13', style: 'max-width:820px' }, 'Commits credited to an AI tool through Co-authored-by trailers, “Generated with” footers or AI bot authors. AI help that is not credited in the commit is invisible here, so treat shares as a floor. Follow-up fix and revert rates compare groups of commits; AI use clusters in some areas and periods, so a gap is a prompt to look closer, not proof of cause.'));
+  var fu = A.followUpFix, rv = A.reverted;
+  wrap.appendChild(h('section', { class: 'stats' },
+    stat('AI-assisted · 90d', A.recentShare + '%', fmt(A.recent) + ' commits'),
+    stat('AI-assisted · ' + ((F.repo || {}).historyDays || 365) + 'd', A.share + '%', fmt(A.commits) + ' commits'),
+    stat('Fixed within ' + fu.days + ' days', fu.ai[1] ? fu.aiPct + '% AI' : '—', 'vs ' + fu.humanPct + '% other commits (' + fu.ai[1] + ' / ' + fu.human[1] + ' commits)'),
+    stat('Reverted', rv.ai[1] ? rv.aiPct + '% AI' : '—', 'vs ' + rv.humanPct + '% other commits')));
+  var mx = Math.max.apply(null, A.monthly.map(function (m) { return m.total; }).concat([1]));
+  wrap.appendChild(h('section', { class: 'box pad section', style: 'padding:16px 20px;gap:12px' },
+    sectionHead('AI-assisted commits by month', h('span', { class: 'row small', style: 'gap:14px;color:var(--ink-3)' }, h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'width:10px;height:10px;border-radius:2px;background:var(--blue)' }), 'AI-assisted'), h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'width:10px;height:10px;border-radius:2px;background:#D5DAE1' }), 'Other'))),
+    h('div', { style: 'display:flex;flex-direction:column;gap:6px' },
+      h('div', { class: 'plot', style: 'height:150px', role: 'img', 'aria-label': 'Monthly commits, AI-assisted share' }, A.monthly.map(function (m) {
+        var tot = Math.round(m.total / mx * 130), ai = Math.round(m.ai / mx * 130);
+        return h('span', { class: 'b' }, h('span', null, m.total ? Math.round(100 * m.ai / m.total) + '%' : ''),
+          h('span', { style: 'display:flex;flex-direction:column;justify-content:flex-end;width:100%;max-width:44px;height:' + tot + 'px;background:#D5DAE1;border-radius:3px 3px 0 0;overflow:hidden' }, h('span', { style: 'display:block;height:' + ai + 'px;background:var(--blue)' })));
+      })),
+      h('div', { class: 'xax' }, A.monthly.map(function (m) { var d = new Date(m.month + '-15T12:00:00Z'); return h('span', null, d.toLocaleDateString('en-US', { month: 'short' })); })))));
+  var rows = M.components.filter(function (c) { return CF[c.id] && CF[c.id].aiShare != null && CF[c.id].commits; }).sort(function (a, b) { return CF[b.id].aiShare - CF[a.id].aiShare; });
+  wrap.appendChild(h('div', { class: 'cols', style: 'gap:24px' },
+    h('section', { class: 'section', style: 'flex:999 1 520px;min-width:0' }, sectionHead('By component', h('span', { class: 'small muted' }, '90 days')),
+      rows.length ? table(520, [th('Component'), th('AI-assisted', 0, 'width:200px'), th('Commits', 1), th('Fix share · window', 1)], rows.map(function (c) {
+        var f = CF[c.id];
+        return h('tr', null, h('td', null, h('a', { href: '#/component/' + encodeURIComponent(c.id), style: 'font-weight:500;color:var(--ink)' }, c.name)),
+          h('td', null, h('span', { class: 'row', style: 'gap:8px;flex-wrap:nowrap' }, meter(f.aiShare), h('span', { class: 'num small', style: 'min-width:38px' }, Math.round(f.aiShare) + '%'))),
+          h('td', { class: 'r' }, f.commits), h('td', { class: 'r' }, (f.fixRatio || 0) + '%'));
+      })) : h('div', { class: 'box empty' }, 'No component activity in 90 days.')),
+    h('section', { class: 'section', style: 'flex:1 1 300px;min-width:0' }, h('h2', null, 'Tools credited'),
+      A.tools.length ? h('div', { class: 'box', style: 'padding:6px 0' }, A.tools.map(function (t) {
+        return h('div', { class: 'between', style: 'padding:8px 16px' }, h('span', { style: 'font-weight:500' }, t.name), h('span', { class: 'num muted' }, fmt(t.commits) + ' commits'));
+      })) : h('div', { class: 'box empty' }, 'No AI-credited commits in the window.'))));
+  return wrap;
+}
+
+// ------------------------------------------------------------------ structure (static graph)
+VIEWS.structure = function (r) {
+  renderSide('structure'); crumbs([['Structure']]);
+  var S = F.structure, tab = r.query.tab || 'dependencies';
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' },
+    h('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:780px' }, h('h1', null, 'Structure'),
+      h('p', { class: 'sub' }, 'What the code itself says: dependencies from imports, interfaces it declares, and which components tests reach. Use it to check the model, not replace it — dynamic wiring (DI by name, HTTP between services) is invisible to imports.')));
+  if (!S) { page.appendChild(h('div', { class: 'box empty' }, 'No static graph yet. Run: python3 .cartographer/bin/graph.py, then build.py.')); return page; }
+  var unseen = S.verification.filter(function (v) { return v.status === 'unseen'; }), unmodeled = S.compEdges.filter(function (e) { return !e.inModel; });
+  var viol = S.compEdges.filter(function (e) { return e.violation; });
+  var langs = S.languages, LN = { jvm: 'JVM', py: 'Python', js: 'JS/TS', go: 'Go', cs: 'C#' };
+  page.appendChild(h('section', { class: 'stats' },
+    stat('Files scanned', fmt(S.filesScanned), Object.keys(langs).map(function (k) { return LN[k] + ' ' + langs[k].files; }).join(' · ')),
+    stat('Component dependencies', S.compEdges.length, unmodeled.length + ' not in the model'),
+    stat('Model edges unseen', unseen.length, 'of ' + S.verification.filter(function (v) { return v.status !== 'n/a'; }).length + ' checkable'),
+    stat('Cycles · violations', S.cycles.length + ' · ' + viol.length, 'between components'),
+    stat('Interfaces', fmt(S.apiTotal), 'routes, tools, topics, jobs, tables')));
+  page.appendChild(tabsBar('#/structure', tab, [['dependencies', 'Dependencies', S.compEdges.length], ['interfaces', 'Interfaces', S.apiTotal], ['tests', 'Test reach', S.untested.length ? S.untested.length + ' untested' : null], ['libraries', 'Libraries', S.external.length]]));
+  if (tab === 'dependencies') {
+    if (S.cycles.length) page.appendChild(h('div', { class: 'callout text s13' }, h('strong', null, 'Dependency cycle' + (S.cycles.length > 1 ? 's' : '') + ': '), S.cycles.map(function (cy, i) { return [i ? '; ' : '', cy.map(cname).join(' ⇄ ')]; }), '. Components in a cycle can only be changed, tested and released together.'));
+    var ids = M.components.filter(function (c) { return c.layer !== 'external' && S.compEdges.some(function (e) { return e.from === c.id || e.to === c.id; }); }).map(function (c) { return c.id; });
+    if (ids.length && ids.length <= 30) {
+      var cell = {}; S.compEdges.forEach(function (e) { cell[e.from + '|' + e.to] = e; });
+      var mxc = Math.max.apply(null, S.compEdges.map(function (e) { return e.count; }).concat([1]));
+      page.appendChild(h('section', { class: 'section' }, sectionHead('Dependency matrix', h('span', { class: 'small muted' }, 'Row imports column · number = files importing · outlined = not in the model · orange = against layering')),
+        h('div', { class: 'box scrollx' }, h('table', { class: 't matrix' },
+          h('thead', null, h('tr', null, h('th', null, ''), ids.map(function (id) { return h('th', { class: 'mx-col', title: cname(id) }, h('span', null, cname(id))); }))),
+          h('tbody', null, ids.map(function (a) {
+            return h('tr', null, h('th', { scope: 'row', style: 'background:#fff;font-weight:500;color:var(--ink);white-space:nowrap' }, cname(a)), ids.map(function (b) {
+              var e = cell[a + '|' + b];
+              if (a === b) return h('td', { class: 'mx self' });
+              if (!e) return h('td', { class: 'mx' });
+              var alpha = (0.12 + 0.6 * e.count / mxc).toFixed(2);
+              return h('td', { class: 'mx' + (e.inModel ? '' : ' unmodeled') + (e.violation ? ' viol' : ''), style: 'color:' + (alpha > 0.45 ? '#fff' : '#0F1419') + ';background:' + (e.violation ? 'rgba(194,65,12,' + alpha + ')' : 'rgba(0,71,187,' + alpha + ')'), title: cname(a) + ' → ' + cname(b) + ': ' + e.count + ' file(s) · e.g. ' + e.example.path + ':' + e.example.line }, e.count);
+            }));
+          }))))));
+    }
+    page.appendChild(h('div', { class: 'cols', style: 'gap:24px' },
+      h('section', { class: 'section', style: 'flex:1 1 440px;min-width:0' }, sectionHead('In code, not in the model', h('span', { class: 'small muted' }, unmodeled.length + ' dependencies')),
+        unmodeled.length ? table(440, [th('Dependency'), th('Files', 1), th('Example')], unmodeled.slice(0, 20).map(function (e) {
+          return h('tr', null, h('td', null, compCell(e.from), ' → ', compCell(e.to), e.violation ? h('span', { class: 'pill', style: 'margin-left:6px;color:var(--md-fg);border-color:#E9C4A6;font-size:11px;padding:0 6px' }, 'against layering') : null),
+            h('td', { class: 'r' }, e.count), h('td', null, evRef({ path: e.example.path, line: e.example.line })));
+        })) : h('div', { class: 'box empty' }, 'Every code dependency between components is in the model.')),
+      h('section', { class: 'section', style: 'flex:1 1 440px;min-width:0' }, sectionHead('Model edges checked against imports', null),
+        table(440, [th('Edge'), th('Kind'), th('Status')], S.verification.filter(function (v) { return v.status !== 'n/a'; }).map(function (v) {
+          return h('tr', null, h('td', null, compCell(v.from), ' → ', compCell(v.to)), h('td', { class: 'muted' }, v.kind),
+            h('td', null, v.status === 'verified' ? h('span', { class: 'drift fresh' }, '✓ ' + v.count + ' file' + (v.count === 1 ? '' : 's')) : h('span', { class: 'drift stale', title: 'No import found. Fine for runtime wiring (DI by name, HTTP, messaging); otherwise the edge may be wrong.' }, 'Not seen in imports')));
+        })))));
+    if (S.fanIn.length) page.appendChild(h('section', { class: 'section' }, sectionHead('Most depended-on files', h('span', { class: 'small muted' }, 'Changing these ripples furthest')),
+      table(560, [th('File'), th('Component'), th('Imported by', 1)], S.fanIn.slice(0, 10).map(function (x) { return h('tr', null, h('td', null, evRef({ path: x.path })), h('td', null, compCell(x.component)), h('td', { class: 'r' }, x.count)); }))));
+  } else if (tab === 'interfaces') {
+    var kind = r.query.kind || 'all', kinds = {};
+    S.api.forEach(function (a) { kinds[a.kind] = (kinds[a.kind] || 0) + 1; });
+    var list = S.api.filter(function (a) { return kind === 'all' || a.kind === kind; });
+    var KL = { http: 'HTTP routes', 'mcp-tool': 'MCP tools', 'mcp-resource': 'MCP resources', 'mcp-prompt': 'MCP prompts', 'event-in': 'Consumed topics', 'event-out': 'Published topics', job: 'Scheduled jobs', table: 'Tables' };
+    page.appendChild(h('div', { class: 'filterchips', role: 'group', 'aria-label': 'Interface kind' }, [['all', 'All', S.api.length]].concat(Object.keys(kinds).sort().map(function (k) { return [k, KL[k] || k, kinds[k]]; })).map(function (k) {
+      return h('button', { type: 'button', 'aria-pressed': String(kind === k[0]), onclick: function () { location.hash = '#/structure?tab=interfaces' + (k[0] === 'all' ? '' : '&kind=' + k[0]); } }, k[1], h('span', { class: 'n' }, k[2]));
+    })));
+    page.appendChild(table(760, [th('Kind', 0, 'width:130px'), th('Method', 0, 'width:90px'), th('Name'), th('Component'), th('Declared at')], list.slice(0, 300).map(function (a) {
+      return h('tr', null, h('td', { class: 'muted small' }, KL[a.kind] || a.kind), h('td', { class: 'mono' }, a.method || ''), h('td', { class: 'mono', style: 'color:var(--ink)' }, a.name || '—'), h('td', null, compCell(a.component)), h('td', null, evRef({ path: a.path, line: a.line })));
+    })));
+    if (list.length > 300) page.appendChild(h('p', { class: 'small muted' }, 'Showing 300 of ' + list.length + '.'));
+  } else if (tab === 'tests') {
+    var tr = Object.keys(S.testReach).map(function (c) { return [c, S.testReach[c]]; }).sort(function (a, b) { return a[1] - b[1]; });
+    page.appendChild(h('p', { class: 'sub s13', style: 'max-width:780px' }, 'How many test files import each component. Zero means no test touches it directly — it may still be covered end to end, but changes there get no fast feedback.'));
+    page.appendChild(table(560, [th('Component'), th('Test files importing it', 1), th('Lines', 1), th('Commits · 90d', 1)], tr.map(function (x) {
+      var f = CF[x[0]] || {};
+      return h('tr', { style: x[1] ? null : 'background:var(--warm-wash)' }, h('td', null, compCell(x[0])), h('td', { class: 'r', style: x[1] ? null : 'font-weight:600;color:var(--warm)' }, x[1]), h('td', { class: 'r' }, fmt(f.loc)), h('td', { class: 'r' }, f.commits || 0));
+    })));
+  } else {
+    page.appendChild(h('p', { class: 'sub s13' }, 'Third-party packages and namespaces imported, by number of import statements.'));
+    page.appendChild(table(420, [th('Package'), th('Imports', 1)], S.external.map(function (x) { return h('tr', null, h('td', { class: 'mono' }, x[0]), h('td', { class: 'r' }, x[1])); })));
+  }
+  return page;
+};
+
+// ------------------------------------------------------------------ pull requests
+function hrs(x) { return x == null ? '—' : x < 48 ? (x < 10 ? x.toFixed(1) : Math.round(x)) + 'h' : (x / 24).toFixed(1) + 'd'; }
+var LEVEL = { high: ['High', 'sig-hi'], medium: ['Medium', 'sig-md'], info: ['Info', 'sig-lo'] };
+VIEWS.prs = function () {
+  renderSide('prs'); crumbs([['Pull requests']]);
+  var H = F.prHistory, P = F.prs || [];
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:24px' },
+    h('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:780px' }, h('h1', null, 'Pull requests'),
+      h('p', { class: 'sub' }, 'How work flows through review, and each analyzed PR explained against the model: what it touches, what it might break, who should look at it.')));
+  if (H) {
+    var cyc = H.cycleHours.n ? ['Cycle time (median)', hrs(H.cycleHours.median), 'open → merge · p75 ' + hrs(H.cycleHours.p75)] : H.leadHours.n ? ['Lead time (median)', hrs(H.leadHours.median), 'first commit → merge · ' + H.leadHours.n + ' merge commits'] : ['Cycle time', '—', 'needs GitHub API or merge commits'];
+    page.appendChild(h('section', { class: 'stats' },
+      stat('Merged · 90d', fmt(H.merged), H.botMerged ? H.botMerged + ' by bots' : 'none by bots'),
+      stat('Median size', H.medianLines == null ? '—' : fmt(H.medianLines) + ' lines', ['XS', 'S', 'M', 'L', 'XL'].map(function (k) { return k + ' ' + H.sizes[k]; }).join(' · ')),
+      stat(cyc[0], cyc[1], cyc[2]),
+      stat('First review (median)', H.firstReviewHours.n ? hrs(H.firstReviewHours.median) : '—', H.firstReviewHours.n ? 'p75 ' + hrs(H.firstReviewHours.p75) : 'needs GitHub API'),
+      stat('AI-assisted PRs', H.aiShare == null ? '—' : H.aiShare + '%', 'of human-authored merged PRs')));
+    var mx = Math.max.apply(null, H.weekly.concat([1]));
+    var left = h('section', { class: 'box pad section', style: 'flex:999 1 520px;min-width:0;padding:16px 20px;gap:12px' }, sectionHead('Merged per week', h('span', { class: 'small muted' }, 'Sources: ' + H.sources.join(' + '))), weekChartGeneric(H.weekly, H.weekStarts));
+    var right = h('section', { class: 'box pad section', style: 'flex:1 1 300px;min-width:0;padding:16px 20px' }, h('h2', null, 'Review load'),
+      H.reviewLoad.reviews ? [h('p', { class: 's13', style: 'margin:0;color:var(--ink-2)' }, H.reviewLoad.reviewers + ' reviewers gave ' + H.reviewLoad.reviews + ' reviews; the busiest three gave ' + H.reviewLoad.top3Share + '%.'),
+        H.reviewLoad.top.map(function (x) { var mxr = H.reviewLoad.top[0].reviews; return h('div', { class: 'ownrow' }, h('span', { class: 'name' }, x.name), h('span', { class: 'bar t6' }, h('span', { style: 'width:' + Math.round(100 * x.reviews / mxr) + '%' })), h('span', { class: 'num muted', style: 'text-align:right' }, x.reviews)); })]
+        : h('p', { class: 's13 muted', style: 'margin:0' }, 'Review data needs the GitHub API (gh authenticated). Git history alone shows merges, not reviews.'));
+    page.appendChild(h('div', { class: 'cols', style: 'gap:20px' }, left, right));
+    if (H.stale.length) page.appendChild(h('section', { class: 'section' }, sectionHead('Waiting for a first review', h('span', { class: 'small muted' }, 'Open 7+ days, not draft, no review')),
+      table(560, [th('PR'), th('Author'), th('Age', 1)], H.stale.map(function (s) { return h('tr', null, h('td', null, s.url ? h('a', { href: s.url, target: '_blank', rel: 'noopener' }, '#' + s.number + ' ' + s.title) : '#' + s.number + ' ' + s.title), h('td', { class: 'mono' }, s.author), h('td', { class: 'r' }, s.ageDays + 'd')); }))));
+    var comps = Object.keys(H.components || {}).filter(function (c) { return COMP[c]; }).sort(function (a, b) { return H.components[b].prs - H.components[a].prs; });
+    if (comps.length) page.appendChild(h('section', { class: 'section' }, sectionHead('By component', h('span', { class: 'small muted' }, 'Merged human PRs touching each component, 90 days')),
+      table(560, [th('Component'), th('PRs', 1), th('Median lines', 1), th(H.cycleHours.n ? 'Median cycle' : 'Median lead', 1)], comps.slice(0, 15).map(function (c) {
+        var x = H.components[c]; return h('tr', null, h('td', null, compCell(c)), h('td', { class: 'r' }, x.prs), h('td', { class: 'r' }, fmt(x.medianLines)), h('td', { class: 'r' }, hrs(x.medianCycleHours)));
+      }))));
+  }
+  page.appendChild(h('section', { class: 'section' }, sectionHead('Analyzed pull requests', h('span', { class: 'small muted mono' }, 'pr.py --pr N · --merged N · --base A --head B')),
+    P.length ? table(820, [th('Pull request'), th('Size'), th('Touches'), th('Signals'), th('Analyzed')], P.map(function (p) {
+      var cnt = { high: 0, medium: 0, info: 0 }; (p.signals || []).forEach(function (s) { cnt[s.level]++; });
+      return h('tr', null, h('td', null, h('a', { href: '#/pr/' + encodeURIComponent(p.id), style: 'font-weight:600;color:var(--ink)' }, (p.meta && p.meta.number ? '#' + p.meta.number + ' ' : '') + p.title),
+          h('div', { class: 'small muted' }, p.stats.files + ' files · +' + fmt(p.stats.add) + ' −' + fmt(p.stats.del) + ' · ' + p.stats.commits + ' commit' + (p.stats.commits === 1 ? '' : 's'))),
+        h('td', null, h('span', { class: 'size size-' + p.stats.size }, p.stats.size)),
+        h('td', { class: 'small' }, (p.touched || []).slice(0, 3).map(function (t) { return t.name; }).join(', ') || h('span', { class: 'muted' }, 'Unmapped')),
+        h('td', null, h('span', { class: 'row', style: 'gap:6px' }, ['high', 'medium', 'info'].map(function (l) { return cnt[l] ? h('span', { class: 'sigcount ' + LEVEL[l][1] }, cnt[l] + ' ' + LEVEL[l][0].toLowerCase()) : null; }))),
+        h('td', { class: 'muted small' }, shortDate(p.analyzedAt)));
+    })) : h('div', { class: 'box empty' }, 'No PRs analyzed yet. Run python3 .cartographer/bin/pr.py --pr <number> (or --merged / --commit / --base --head), then build.py. In CI, the PR workflow does this for every pull request.')));
+  if (H && H.recent && H.recent.length) page.appendChild(h('section', { class: 'section' }, sectionHead('Recently merged', null),
+    table(760, [th('PR'), th('Author'), th('Lines', 1), th('Components'), th('Merged')], H.recent.slice(0, 15).map(function (p) {
+      var an = P.filter(function (x) { return x.meta && x.meta.number === p.number; })[0];
+      return h('tr', null, h('td', null, an ? h('a', { href: '#/pr/' + encodeURIComponent(an.id), style: 'font-weight:500' }, '#' + p.number + ' ' + p.title) : p.url ? h('a', { href: p.url, target: '_blank', rel: 'noopener', style: 'color:var(--ink)' }, '#' + p.number + ' ' + p.title) : h('span', null, '#' + p.number + ' ' + p.title),
+          p.ai ? h('span', { class: 'pill gray', style: 'margin-left:6px;font-size:11px;padding:0 6px' }, 'AI · ' + p.ai) : null, p.bot ? h('span', { class: 'pill gray', style: 'margin-left:6px;font-size:11px;padding:0 6px' }, 'bot') : null),
+        h('td', { class: 'mono' }, p.author || ''), h('td', { class: 'r' }, fmt(p.lines)), h('td', { class: 'small' }, (p.components || []).slice(0, 3).map(cname).join(', ')), h('td', { class: 'muted small' }, shortDate(p.mergedAt)));
+    }))));
+  return page;
+};
+function weekChartGeneric(series, starts) {
+  var mx = Math.max.apply(null, series.concat([1])), top = Math.max(4, Math.ceil(mx / 4) * 4), peak = series.indexOf(mx);
+  return h('div', { class: 'chart' }, h('div', { class: 'yax' }, h('span', null, top), h('span', null, top / 2), h('span', null, '0')),
+    h('div', { style: 'flex:1 1 auto;display:flex;flex-direction:column;gap:6px;min-width:0' },
+      h('div', { class: 'plot', role: 'img', 'aria-label': 'Weekly: ' + series.join(', ') }, series.map(function (v, i) { return h('span', { class: 'b' + (i === peak && v ? ' peak' : '') }, h('span', null, v || ''), h('span', { style: 'height:' + Math.round(v / top * 140) + 'px' })); })),
+      h('div', { class: 'xax' }, series.map(function (_, i) { return h('span', null, i % 2 === 0 && starts[i] ? shortDate(starts[i]) : ''); }))));
+}
+
+function srcSpan(text, lang, st) {
+  var el = h('span', { class: 'src' });
+  tokenize(text, lang, st).forEach(function (t) { el.appendChild(t[0] ? h('span', { class: 'tk-' + t[0] }, t[1]) : document.createTextNode(t[1])); });
+  if (!text) el.appendChild(document.createTextNode(' '));
+  return el;
+}
+function refLabel(r) { r = String(r || ''); return r.replace(/^refs\/cartograph\//, '').replace(/^([0-9a-f]{7})[0-9a-f]{5,}/, '$1'); }
+function diffBlock(hk) {
+  var o = hk.oldStart, n = hk.newStart;
+  var body = h('div', { class: 'codebody diff', style: 'padding:6px 0' });
+  var SHOW = 24, rows = [], lang = (hk.path.split('.').pop() || '').toLowerCase(), st = { inBlock: false };
+  hk.lines.forEach(function (l) {
+    var sign = l[0], cls = sign === '+' ? 'dl add' : sign === '-' ? 'dl del' : 'dl';
+    var on = sign === '+' ? '' : String(o), nn = sign === '-' ? '' : String(n);
+    if (sign !== '+') o++; if (sign !== '-') n++;
+    var row = h('div', { class: cls }, h('span', { class: 'gut2' }, on), h('span', { class: 'gut2' }, nn), h('span', { class: 'sg' }, sign === ' ' ? '' : sign), srcSpan(l.slice(1).replace(/\t/g, '    '), lang, st));
+    if (rows.length >= SHOW) row.hidden = true;
+    rows.push(row); body.appendChild(row);
+  });
+  if (rows.length > SHOW) {
+    var more = h('button', { type: 'button', class: 'morebtn', onclick: function () { rows.forEach(function (x) { x.hidden = false; }); more.remove(); } }, 'Show ' + (rows.length - SHOW) + ' more lines');
+    body.appendChild(more);
+  }
+  if (hk.trimmed) body.appendChild(h('div', { class: 'dl', style: 'color:var(--muted);padding-left:16px;font-family:var(--sans);font-size:12px' }, '… hunk continues'));
+  var url = blobUrl(hk.path, hk.newStart);
+  return h('div', { class: 'codecard' }, h('div', { class: 'codehead', style: 'padding:10px 16px' },
+    h('div', { style: 'display:flex;flex-direction:column;gap:2px;min-width:0' }, h('code', { style: 'color:var(--ink);word-break:break-all;font-weight:500' }, hk.path + ':' + hk.newStart), hk.header ? h('code', { class: 'muted', style: 'word-break:break-all' }, hk.header) : null),
+    hk.component ? compLink(hk.component) : null), body);
+}
+
+VIEWS.pr = function (r) {
+  renderSide('prs');
+  var P = (F.prs || []).filter(function (p) { return p.id === r.args[0]; })[0];
+  if (!P) { crumbs([['Pull requests', '#/prs'], ['Not found']]); return h('div', { class: 'box empty' }, 'No analysis for ' + r.args[0] + '. Run pr.py, then build.py.'); }
+  var meta = P.meta || {}, s = P.stats;
+  crumbs([['Pull requests', '#/prs'], [meta.number ? '#' + meta.number : P.id]]);
+  var touched = {}; (P.touched || []).forEach(function (t) { touched[t.component] = t.lines; });
+  var blast = {}; (P.blast.components || []).forEach(function (b) { blast[b.component] = b.importers; }); (P.blast.inboundModelEdges || []).forEach(function (b) { blast[b.component] = blast[b.component] || 0; });
+  var byPath = {}; P.files.forEach(function (f) { byPath[f.path] = f; });
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' });
+  page.appendChild(h('div', { style: 'display:flex;flex-direction:column;gap:8px' },
+    h('div', { class: 'row', style: 'gap:8px 12px' }, h('h1', { style: 'font-size:22px' }, (meta.number ? '#' + meta.number + ' ' : '') + P.title),
+      h('span', { class: 'size size-' + s.size }, s.size), meta.mergedAt || meta.merged ? h('span', { class: 'pill' }, 'Merged') : meta.state === 'open' ? h('span', { class: 'pill blue' }, 'Open') : null),
+    h('div', { class: 'row s13', style: 'gap:6px 16px;color:var(--ink-3)' },
+      (meta.author || (P.commits[0] || {}).author) ? h('span', null, 'by ', h('span', { class: 'mono', style: 'color:var(--ink)' }, meta.author || P.commits[0].author)) : null,
+      h('span', { class: 'mono' }, refLabel(meta.baseRef || P.base) + ' ← ' + refLabel(meta.headRef || P.head)),
+      h('span', null, s.files + ' files · ', h('span', { style: 'color:var(--add)' }, '+' + fmt(s.add)), ' ', h('span', { style: 'color:var(--del)' }, '−' + fmt(s.del))),
+      h('span', null, s.commits + ' commit' + (s.commits === 1 ? '' : 's') + (s.aiCommits ? ' (' + s.aiCommits + ' AI-assisted)' : '')),
+      s.mechanicalFiles ? h('span', null, s.mechanicalFiles + ' mechanical') : null,
+      meta.url ? h('a', { href: meta.url, target: '_blank', rel: 'noopener', style: 'font-weight:500' }, 'Open on GitHub') : null)));
+  if (P.autoModel) page.appendChild(h('div', { class: 'callout info text s13' }, 'Analyzed against a provisional directory model. Run /cartograph-survey for component names, flows, snippets and risks in this view.'));
+
+  var main = h('div', { class: 'col-main', style: 'gap:24px' }), side = h('aside', { class: 'col-side' });
+  if (P.guard) main.appendChild(h('section', { class: 'section' }, sectionHead('Guardrails', h('span', { class: 'row', style: 'gap:8px' }, h('span', { class: P.guard.ok ? 'ok-pill' : 'fail-pill' }, P.guard.ok ? 'Passed' : P.guard.blocking.length + ' blocking'), h('a', { href: '#/guard', class: 'small' }, P.guard.rules + ' rules'))),
+    violationList(P.guard.blocking.concat(P.guard.warnings), 'All ' + P.guard.rules + ' rules passed.')));
+  main.appendChild(h('section', { class: 'section' }, sectionHead('What to look at', h('span', { class: 'small muted' }, P.signals.length + ' signal' + (P.signals.length === 1 ? '' : 's'))),
+    P.signals.length ? h('ul', { class: 'list box', style: 'overflow:hidden' }, P.signals.map(function (sg) {
+      return h('li', { class: 'sig' }, h('span', { class: 'sigmark ' + LEVEL[sg.level][1], title: LEVEL[sg.level][0] }),
+        h('div', { style: 'display:flex;flex-direction:column;gap:3px;min-width:0' }, h('span', { style: 'font-weight:600' }, sg.title), sg.detail ? h('span', { class: 's13', style: 'color:var(--ink-2)' }, sg.detail) : null,
+          (sg.refs || []).length ? h('span', { class: 'row', style: 'gap:6px 12px' }, sg.refs.slice(0, 4).map(function (p) { return evRef({ path: p }); })) : null),
+        h('span', { class: 'sigkind' }, sg.kind.replace('-', ' ')));
+    })) : h('div', { class: 'box empty' }, 'Nothing stands out: no model drift, missed co-changes, new dependencies, interface or schema changes.')));
+  main.appendChild(h('section', { class: 'section' }, sectionHead('Review guide', h('span', { class: 'small muted' }, 'Contracts first, then code by layer, then tests')),
+    h('div', { class: 'box', style: 'overflow:hidden' }, P.groups.map(function (g, gi) {
+      return h('div', { style: gi ? 'border-top:1px solid var(--line)' : null },
+        h('div', { class: 'between', style: 'padding:10px 16px;background:var(--subtle)' }, h('span', { class: 'eyebrow', style: 'color:var(--ink-2)' }, (gi + 1) + ' · ' + g.label), h('span', { class: 'small mono' }, h('span', { style: 'color:var(--add)' }, '+' + g.add), ' ', h('span', { style: 'color:var(--del)' }, '−' + g.del))),
+        g.files.map(function (p) {
+          var f = byPath[p] || {}, tags = [];
+          if (f.snippets && f.snippets.length) tags.push(['Pinned snippet', 'warmtag']);
+          if (f.interfaces && f.interfaces.length) tags.push([f.interfaces.length + ' interface', 'bluetag']);
+          if (f.newDeps && f.newDeps.length) tags.push(['New dependency', 'warmtag']);
+          if (f.hotspotRank) tags.push(['Hotspot #' + f.hotspotRank, 'graytag']);
+          if (f.whitespaceOnly) tags.push(['Whitespace only', 'graytag']);
+          if (f.status === 'R') tags.push(['Renamed' + (f.similarity ? ' ' + f.similarity + '%' : ''), 'graytag']);
+          return h('div', { class: 'frow' }, h('span', { class: 'st st-' + f.status, title: { A: 'Added', M: 'Modified', D: 'Deleted', R: 'Renamed', C: 'Copied' }[f.status] || '' }, f.status),
+            h('span', { style: 'flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px' }, h('span', { class: 'row', style: 'gap:8px' }, evRef({ path: p }), tags.map(function (t) { return h('span', { class: 'ftag ' + t[1] }, t[0]); })),
+              f.old ? h('span', { class: 'small muted mono' }, 'from ' + f.old) : null),
+            h('span', { class: 'small muted', style: 'flex:0 0 auto;white-space:nowrap' }, f.component ? cname(f.component) : 'Unmapped'),
+            h('span', { class: 'mono small', style: 'flex:0 0 84px;text-align:right' }, h('span', { style: 'color:var(--add)' }, '+' + f.add), ' ', h('span', { style: 'color:var(--del)' }, '−' + f.del)));
+        }));
+    }))));
+  if (P.keyHunks.length) main.appendChild(h('section', { class: 'section' }, sectionHead('Key changes', h('span', { class: 'small muted' }, 'Weighted toward pinned snippets, interfaces, new dependencies and hotspots')), P.keyHunks.map(diffBlock)));
+  if (P.commits.length) main.appendChild(h('section', { class: 'section' }, h('h2', null, 'Commits'), commitList(P.commits.map(function (c) { return { sha: c.sha, subject: c.subject, author: c.author, date: c.date, files: null, components: [], ai: c.ai, fix: c.fix }; }))));
+
+  // side: where it lands
+  var map = h('div', { class: 'box', style: 'overflow:hidden' }, M.layers.map(function (l, i) {
+    var cs = M.components.filter(function (c) { return c.layer === l.id; });
+    if (!cs.length) return null;
+    return h('div', { style: 'padding:10px 14px;display:flex;flex-direction:column;gap:6px;' + (i ? 'border-top:1px solid var(--line)' : '') + (l.id === 'external' ? ';background:var(--subtle)' : '') },
+      h('span', { class: 'eyebrow', style: 'font-size:11px' }, l.name),
+      h('span', { class: 'row', style: 'gap:6px' }, cs.map(function (c) {
+        var t = touched[c.id] != null, b = blast[c.id] != null;
+        return h('a', { href: '#/component/' + encodeURIComponent(c.id), class: 'mchip' + (t ? ' touched' : b ? ' blast' : ''), title: t ? touched[c.id] + ' lines changed' : b ? 'Depends on what changed' : '' }, c.name);
+      })));
+  }));
+  side.appendChild(h('section', { class: 'section' }, sectionHead('Where it lands', null), map,
+    h('div', { class: 'row small', style: 'gap:6px 16px;color:var(--ink-3)' }, h('span', { class: 'row', style: 'gap:6px' }, h('span', { class: 'mchip touched', style: 'padding:0 8px' }, ' '), 'Changed'), h('span', { class: 'row', style: 'gap:6px' }, h('span', { class: 'mchip blast', style: 'padding:0 8px' }, ' '), 'Depends on the change')),
+    P.blast.flows.length ? h('div', { class: 's13' }, h('span', { class: 'muted' }, 'Flows through it: '), P.blast.flows.map(function (f, i) { return [i ? ', ' : '', h('a', { href: '#/flows/' + encodeURIComponent(f.id) }, f.name)]; })) : null,
+    P.blast.importerFiles ? h('div', { class: 's13 muted' }, P.blast.importerFiles + ' other file' + (P.blast.importerFiles === 1 ? '' : 's') + ' import the changed code.') : null));
+  side.appendChild(h('section', { class: 'box pad section' }, h('h2', { style: 'font-size:14px' }, 'Suggested reviewers'),
+    P.reviewers.length ? P.reviewers.map(function (rv) { return h('div', { style: 'display:flex;flex-direction:column' }, h('span', { class: 'mono', style: 'color:var(--ink);font-size:13px' }, rv.name), h('span', { class: 'small muted' }, rv.commits + ' commits to ' + rv.files + ' of these files · active ' + shortDate(rv.lastActive))); })
+      : h('span', { class: 's13 muted' }, 'No active contributors other than the author have changed these files in the window.')));
+  if (P.missedCoChanges.length) side.appendChild(h('section', { class: 'box pad section' }, h('h2', { style: 'font-size:14px' }, 'Usually changed together'),
+    h('p', { class: 'small muted', style: 'margin:0' }, 'Not in this PR, but historically changed with files that are.'),
+    P.missedCoChanges.map(function (m) { return h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, evRef({ path: m.file }), h('span', { class: 'small muted' }, Math.round(m.probability * 100) + '% of the time ' + base(m.with) + ' changes (' + m.shared + '/' + m.revs + ')')); })));
+  var md = P.modelDrift;
+  if (md.snippets.length || md.evidence.length) side.appendChild(h('section', { class: 'box pad section', style: 'border-color:var(--warm-line);background:var(--warm-wash)' }, h('h2', { style: 'font-size:14px' }, 'Model impact'),
+    md.snippets.map(function (id) { var sn = SNIP[id]; return h('a', { href: '#/code/' + encodeURIComponent(id), class: 's13', style: 'font-weight:500' }, sn ? sn.title : id); }),
+    md.evidence.length ? h('span', { class: 's13', style: 'color:var(--ink-2)' }, md.evidence.length + ' cited line' + (md.evidence.length === 1 ? '' : 's') + ' changed') : null,
+    h('code', { style: 'color:var(--ink-2)' }, '/cartograph-refresh')));
+  side.appendChild(h('section', { class: 'box pad section' }, h('h2', { style: 'font-size:14px' }, 'Tests'),
+    h('dl', { class: 'facts', style: 'padding:0' },
+      h('div', null, h('dt', null, 'Test files changed'), h('dd', null, s.testFiles)),
+      h('div', null, h('dt', null, 'Tests importing changed code'), h('dd', null, P.blast.testsReaching, P.blast.testsReachingChanged ? h('small', null, ' ' + P.blast.testsReachingChanged + ' changed here') : null))),
+    P.blast.untested.length ? h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', { class: 'small muted' }, 'Changed files no test imports:'), P.blast.untested.slice(0, 5).map(function (p) { return evRef({ path: p }); })) : null));
+  page.appendChild(h('div', { class: 'cols' }, main, side));
+  return page;
+};
+
+VIEWS.risks = function (r) {
+  renderSide('risks'); crumbs([['Decisions & risks']]);
+  var f = r.query.sev || 'all', focus = r.args[0];
+  var counts = { all: M.risks.length, high: 0, medium: 0, low: 0 }; M.risks.forEach(function (x) { counts[x.severity] = (counts[x.severity] || 0) + 1; });
+  var list = M.risks.filter(function (x) { return f === 'all' || x.severity === f; }).sort(function (a, b) { return SEV_ORDER[a.severity] - SEV_ORDER[b.severity]; });
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:32px' });
+  page.appendChild(h('section', { class: 'section', style: 'gap:12px' },
+    h('div', { class: 'row', style: 'justify-content:space-between;align-items:flex-end;gap:16px' },
+      h('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:680px' }, h('h1', null, 'Risks'), h('p', { class: 'sub' }, 'Each risk cites the code that demonstrates it. Severity is a judgment; evidence is not.')),
+      h('div', { class: 'filterchips', role: 'group', 'aria-label': 'Filter by severity' }, [['all', 'All'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].map(function (x) {
+        return h('button', { type: 'button', 'aria-pressed': String(f === x[0]), onclick: function () { location.hash = '#/risks' + (x[0] === 'all' ? '' : '?sev=' + x[0]); } }, x[1], h('span', { class: 'n' }, counts[x[0]] || 0));
+      }))),
+    list.length ? h('div', { class: 'box scrollx' }, h('table', { class: 't', style: 'min-width:820px' },
+      h('thead', null, h('tr', null, h('th', { style: 'width:92px' }, 'Severity'), h('th', null, 'Risk'), h('th', { style: 'width:120px' }, 'Category'), h('th', { style: 'width:200px' }, 'Components'), h('th', { style: 'width:240px' }, 'Evidence'))),
+      h('tbody', null, list.map(function (x) {
+        return h('tr', { id: 'risk-' + x.id, style: focus === x.id ? 'background:var(--blue-wash)' : '' }, h('td', null, sevPill(x.severity)),
+          h('td', null, h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', { style: 'font-weight:600' }, x.title), x.detail ? h('span', { style: 'color:var(--ink-2)' }, x.detail) : null)),
+          h('td', { style: 'color:var(--ink-2);text-transform:capitalize' }, x.category || ''),
+          h('td', null, h('div', { class: 'row', style: 'gap:4px' }, (x.components || []).map(function (k) { return compLink(k); }))),
+          h('td', null, (x.evidence || []).length ? x.evidence.map(function (ev) { return h('div', null, evRef(ev)); }) : h('span', { class: 'small muted' }, 'Computed from git or judgment')));
+      })))) : h('div', { class: 'box empty' }, 'No risks recorded.')));
+  if (M.decisions.length) page.appendChild(h('section', { class: 'section', style: 'gap:12px' },
+    h('div', { style: 'display:flex;flex-direction:column;gap:4px' }, h('h2', { style: 'font-size:18px' }, 'Decisions'), h('p', { class: 'sub' }, 'Documented decisions come from ADRs in the repo. Inferred ones are reconstructed from code and should be confirmed by an owner.')),
+    h('div', { class: 'box', style: 'overflow:hidden' }, M.decisions.map(function (d, i) {
+      var doc = d.status === 'documented';
+      return h('article', { style: 'padding:16px 20px;display:flex;flex-direction:column;gap:12px;' + (i ? 'border-top:1px solid var(--line)' : '') },
+        h('div', { class: 'row', style: 'gap:8px 12px' }, h('h3', { style: 'font-size:15px' }, d.title),
+          h('span', { class: 'pill', style: 'color:' + (doc ? 'var(--blue)' : 'var(--md-fg)') + ';border-color:' + (doc ? 'var(--blue-line)' : '#E9C4A6') }, doc ? 'Documented' : 'Inferred'),
+          h('span', { style: 'margin-left:auto;display:flex;gap:10px;flex-wrap:wrap' }, (d.evidence || []).map(function (ev) { return evRef(ev); }))),
+        h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px 24px' },
+          [['Context', d.context], ['Decision', d.decision], ['Consequences', d.consequences]].map(function (p) {
+            return h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', { class: 'eyebrow' }, p[0]), h('span', { class: 's13', style: 'color:' + (p[0] === 'Decision' ? 'var(--ink);font-weight:500' : 'var(--ink-2)') }, p[1] || '—'));
+          })));
+    }))));
+  var cols = h('div', { class: 'cols', style: 'gap:24px' });
+  if (M.glossary.length) cols.appendChild(h('section', { class: 'section', id: 'glossary', style: 'flex:999 1 480px;min-width:0;gap:12px' }, h('h2', { style: 'font-size:18px' }, 'Glossary'),
+    h('dl', { class: 'box', style: 'margin:0;overflow:hidden' }, M.glossary.map(function (g, i) {
+      return h('div', { style: 'padding:12px 16px;display:grid;grid-template-columns:minmax(120px,160px) minmax(0,1fr);gap:4px 16px;' + (i ? 'border-top:1px solid var(--line)' : '') },
+        h('dt', { class: 's13', style: 'font-weight:600' }, g.term),
+        h('dd', { style: 'margin:0;display:flex;flex-direction:column;gap:2px' }, h('span', { class: 's13', style: 'color:var(--ink-2)' }, g.definition), (g.refs || []).length ? g.refs.map(function (ev) { return evRef(ev); }) : h('span', { class: 'small muted' }, 'No code reference — domain term')));
+    }))));
+  if (M.questions.length) cols.appendChild(h('section', { class: 'section', style: 'flex:1 1 340px;min-width:0;gap:12px' }, h('h2', { style: 'font-size:18px' }, 'Open questions'),
+    h('ul', { class: 'list box', style: 'overflow:hidden' }, M.questions.map(function (q) {
+      return h('li', { style: 'padding:12px 16px;display:flex;flex-direction:column;gap:2px' }, h('span', { class: 's13', style: 'font-weight:600' }, q.q), q.context ? h('span', { class: 'small', style: 'color:var(--ink-3)' }, q.context) : null);
+    }))));
+  if (cols.children.length) page.appendChild(cols);
+  if (focus) setTimeout(function () { var el = document.getElementById('risk-' + focus); if (el) el.scrollIntoView({ block: 'center' }); }, 0);
+  return page;
+};
+
+// ------------------------------------------------------------------ guardrails (factory)
+var METRIC_LABEL = { layerViolations: 'Layer violations', cycles: 'Dependency cycles', unmodeledDependencies: 'Dependencies not in the model', hiddenDependencies: 'Hidden dependencies', untestedComponents: 'Components no test imports', checkErrors: 'Model check errors' };
+function guardOver(G) { var b = (G.baseline || {}).metrics || {}; return Object.keys(G.current || {}).filter(function (k) { return k in b && G.current[k] > b[k]; }); }
+function enforcedAt(r) {
+  if (r.type === 'forbid-command') return ['edit'];
+  if (r.enforce) return [].concat(r.enforce);
+  return r.type === 'protected-paths' ? ['edit', 'diff'] : ['diff'];
+}
+function enforcedLabel(r) {
+  var at = enforcedAt(r), p = [];
+  if (at.indexOf('edit') >= 0) p.push(r.type === 'forbid-command' ? 'Agent command hook' : 'Agent edit hook');
+  if (at.indexOf('diff') >= 0) p.push(r.type === 'ratchet' ? 'CI' : 'Stop hook, pre-commit, CI');
+  return p.join(' · ');
+}
+function ruleSev(r) { return r.severity || ({ 'interface-change': 'warn', 'max-size': 'warn', 'tests-required': 'warn' }[r.type] || 'block'); }
+function sevTag(sev) { return h('span', { class: 'ftag ' + (sev === 'block' ? 'warmtag' : 'graytag') }, sev === 'block' ? 'Blocks' : 'Warns'); }
+function violationList(items, empty) {
+  if (!items.length) return h('div', { class: 'box empty' }, empty);
+  return h('div', { class: 'box', style: 'overflow:hidden' }, items.map(function (v) {
+    var warn = v.severity !== 'block';
+    return h('div', { class: 'vrow' }, h('span', { class: 'sigmark ' + (warn ? 'sig-md' : 'sig-hi'), title: warn ? 'Warning' : 'Blocking' }),
+      h('div', { style: 'display:flex;flex-direction:column;gap:4px;min-width:0;flex:1' },
+        h('span', { style: 'font-weight:600' }, v.message),
+        v.path ? h('span', null, evRef({ path: v.path, line: v.line })) : null,
+        v.fix ? h('span', { class: 'fix' }, h('b', null, 'Fix: '), v.fix) : null,
+        v.suppressedBy ? h('span', { class: 'small muted' }, 'Suppressed — ' + v.suppressedBy) : null),
+      h('code', { class: 'sigkind', style: 'text-transform:none;letter-spacing:0' }, v.rule));
+  }));
+}
+function rateBars(rule, base) {
+  return h('div', { class: 'rate' },
+    h('span', null, 'When it fired'), h('span', { class: 'bar' }, h('span', { style: 'width:' + (rule || 0) + '%' })), h('span', { class: 'mono', style: 'color:var(--ink)' }, rule + '%'),
+    h('span', null, 'All commits'), h('span', { class: 'bar base' }, h('span', { style: 'width:' + (base || 0) + '%' })), h('span', { class: 'mono' }, base + '%'));
+}
+VIEWS.guard = function (r) {
+  renderSide('guard'); crumbs([['Guardrails']]);
+  var G = F.guard, tab = r.query.tab || 'rules';
+  var page = h('div', { style: 'display:flex;flex-direction:column;gap:20px' },
+    h('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:800px' }, h('h1', null, 'Guardrails'),
+      h('p', { class: 'sub' }, 'Rules every change must pass, checked by script from the diff, the import graph and the model — the same change always gets the same verdict. Agents propose rules from the repo’s own mistakes; people accept them. Each rule is replayed against history to show what it would have caught.')));
+  if (!G) {
+    page.appendChild(h('div', { class: 'box', style: 'padding:20px;display:flex;flex-direction:column;gap:10px;max-width:760px' },
+      h('strong', null, 'No guardrails yet'),
+      h('span', { class: 's13', style: 'color:var(--ink-2)' }, 'Suggest rules from this repo’s history and model, review them with their replay proof, then accept the ones worth enforcing.'),
+      h('code', { class: 'cmd' }, 'python3 .cartographer/bin/guard.py --suggest --write\npython3 .cartographer/bin/guard.py --proposals\npython3 .cartographer/bin/guard.py --accept <id> ...'),
+      h('span', { class: 'small muted' }, 'Or ask an agent: /cartograph-guard')));
+    return page;
+  }
+  var active = G.rules.filter(function (x) { return (x.status || 'active') === 'active'; });
+  var blocks = active.filter(function (x) { return ruleSev(x) === 'block'; }).length;
+  var over = guardOver(G), rp = {}; ((G.replay || {}).rules || []).forEach(function (x) { rp[x.rule] = x; });
+  var exValid = G.exceptions.filter(function (e) { return e.state === 'valid'; }), exSoon = exValid.filter(function (e) { return e.daysLeft != null && e.daysLeft <= 14; }), exBad = G.exceptions.filter(function (e) { return e.state !== 'valid'; });
+  var L = G.lessons, gaps = L ? L.classes.filter(function (c) { return c.coverage === 'gap'; }) : [];
+  var proven = active.filter(function (x) { var q = rp[x.rule || x.id]; return q && q.followedByFixOrRevert; }).length;
+  page.appendChild(h('section', { class: 'stats' },
+    stat('Active rules', active.length, blocks + ' block · ' + (active.length - blocks) + ' warn'),
+    stat('Last run', G.last ? (G.last.ok ? 'Passed' : G.last.blocking.length + ' blocking') : '—', G.last ? G.last.label : 'guard.py has not run here'),
+    stat('Ratchet', over.length ? over.length + ' above' : 'Holding', Object.keys(G.current).length + ' structural counts vs baseline'),
+    stat('Proven on history', proven + ' of ' + active.length, G.replay ? G.replay.window.commits + ' commits replayed' : 'run guard.py --replay'),
+    stat('Exceptions', exValid.length, (exSoon.length ? exSoon.length + ' expiring soon' : 'none expiring') + (exBad.length ? ' · ' + exBad.length + ' expired' : ''))));
+  page.appendChild(tabsBar('#/guard', tab, [['rules', 'Rules', active.length], ['proof', 'Proof', G.replay ? G.replay.window.commits + ' commits' : null], ['lessons', 'Lessons', gaps.length ? gaps.length + ' gaps' : null], ['exceptions', 'Exceptions & proposals', (G.exceptions.length + G.proposed.length) || null], ['activity', 'Activity', ((G.events || []).length + (G.simulated || []).length) || null]]));
+
+  if (tab === 'rules') {
+    if (G.last) page.appendChild(h('section', { class: 'section' }, sectionHead('Last run', h('span', { class: 'row', style: 'gap:8px' }, h('span', { class: G.last.ok ? 'ok-pill' : 'fail-pill' }, G.last.ok ? 'Passed' : 'Failed'), h('span', { class: 'small muted mono' }, G.last.label + ' · ' + shortDate(G.last.at)))),
+      violationList(G.last.blocking.concat(G.last.warnings), 'Every rule passed.')));
+    var FIELD_LABEL = { paths: 'Applies to', when: 'When these change', require: 'Must also change', from: 'Importing from', to: 'May not import', module: 'Import text matching',
+      pattern: 'Pattern', needs: 'Must add', status: 'File status', ignore: 'Names ignored', sources: 'Values that must match', fileStatus: 'Git status', kinds: 'Interface kinds', on: 'Interface change',
+      allowAdd: 'New files allowed', allowDelete: 'Deletes allowed', minLines: 'Minimum lines', max: 'Maximum lines', exclude: 'Excluded', metrics: 'Counts', tests: 'Test files', ignoreTests: 'Skip tests', always: 'Check on every change' };
+    var SKIP = { id: 1, type: 1, description: 1, fix: 1, evidence: 1, severity: 1, source: 1, added: 1, status: 1, enforce: 1 };
+    function fieldVal(k, v) {
+      if (k === 'sources') return h('div', { style: 'display:flex;flex-direction:column;gap:4px' }, v.map(function (sv) { return h('span', null, h('code', null, sv.path), ' ', h('code', { style: 'color:var(--ink-3)' }, '/' + sv.pattern + '/')); }));
+      if (typeof v === 'boolean') return h('span', null, v ? 'Yes' : 'No');
+      if (k === 'pattern' || k === 'module' || k === 'ignore') return h('code', { style: 'word-break:break-all' }, '/' + v + '/');
+      var list = Array.isArray(v) ? v : [v];
+      return h('span', { class: 'row', style: 'gap:4px 6px' }, list.map(function (x) { return h('code', { style: 'word-break:break-all' }, String(x)); }));
+    }
+    function rowDetails(x, q) {
+      var dl = h('div', { class: 'ruledef' });
+      Object.keys(x).filter(function (k) { return !SKIP[k] && k.charAt(0) !== '_'; }).forEach(function (k) { dl.appendChild(h('span', { class: 'k' }, FIELD_LABEL[k] || k)); dl.appendChild(h('div', null, fieldVal(k, x[k]))); });
+      dl.appendChild(h('span', { class: 'k' }, 'Enforced at')); dl.appendChild(h('div', null, enforcedLabel(x)));
+      dl.appendChild(h('span', { class: 'k' }, 'On failure')); dl.appendChild(h('div', null, ruleSev(x) === 'block' ? 'Blocks' : 'Warns'));
+      if (x.fix) { dl.appendChild(h('span', { class: 'k' }, 'Fix it says')); dl.appendChild(h('div', null, x.fix)); }
+      if ((x.evidence || []).length) { dl.appendChild(h('span', { class: 'k' }, 'Evidence')); dl.appendChild(h('div', { class: 'row', style: 'gap:4px 6px' }, x.evidence.map(function (e) { return h('code', null, e); }))); }
+      if (q && q.replayable) { dl.appendChild(h('span', { class: 'k' }, 'Replay')); dl.appendChild(h('div', null, q.fired ? q.fired + ' of ' + q.commits + ' commits; ' + q.followedByFixOrRevert + ' later fixed or reverted (' + q.hitRatePct + '% vs ' + q.baseRatePct + '% base)' : 'Never fired in ' + q.commits + ' commits')); }
+      dl.appendChild(h('span', { class: 'k' }, 'Added')); dl.appendChild(h('div', null, (x.added || '—') + ' · ' + (x.source || 'manual')));
+      var raw = {}; Object.keys(x).forEach(function (k) { if (k.charAt(0) !== '_') raw[k] = x[k]; });
+      return h('div', { style: 'padding:4px 16px 14px;display:flex;flex-direction:column;gap:10px' }, dl,
+        h('details', null, h('summary', { class: 'small', style: 'cursor:pointer;color:var(--blue)' }, 'Rule as written in guardrails.json'), h('code', { class: 'cmd', style: 'margin-top:6px' }, JSON.stringify(raw, null, 2))));
+    }
+    var rows = active.map(function (x) {
+      var q = rp[x.id], proof;
+      if (!q || !q.replayable) proof = h('span', { class: 'small muted' }, q ? 'Needs today’s model' : (enforcedAt(x).indexOf('diff') < 0 ? 'Agent hook only' : '—'));
+      else if (!q.fired) proof = h('span', { class: 'small muted' }, 'Never fired in ' + q.commits);
+      else proof = h('span', { class: 's13' }, q.fired + ' commit' + (q.fired === 1 ? '' : 's') + ' · ', h('strong', null, q.hitRatePct + '%'), ' later fixed', h('span', { class: 'muted' }, ' (vs ' + q.baseRatePct + '%)'));
+      return h('details', { class: 'cls', id: 'rule-' + x.id },
+        h('summary', null,
+          h('span', { style: 'display:flex;flex-direction:column;gap:2px;flex:1 1 320px;min-width:0' }, h('code', { style: 'color:var(--ink);font-weight:500;word-break:break-all' }, x.id), h('span', { class: 's13', style: 'color:var(--ink-2)' }, x.description || '')),
+          h('span', { class: 'small mono', style: 'flex:0 0 150px;color:var(--ink-3)' }, x.type),
+          h('span', { style: 'flex:0 0 64px' }, sevTag(ruleSev(x))),
+          h('span', { class: 'small', style: 'flex:0 0 150px;color:var(--ink-3)' }, enforcedLabel(x)),
+          h('span', { style: 'flex:0 0 220px' }, proof)),
+        rowDetails(x, q));
+    });
+    page.appendChild(h('section', { class: 'section' }, sectionHead('Rules', h('span', { class: 'small muted' }, 'Open a rule for its full definition · guard.py --explain <file> shows which apply')),
+      h('div', { class: 'box', style: 'overflow:hidden' }, rows)));
+    if ((G.judgment || []).length) page.appendChild(h('section', { class: 'section' }, sectionHead('Not enforced by script', h('span', { class: 'small muted' }, 'Rules that need judgment stay in the agent instructions and review')),
+      h('ul', { class: 'list box', style: 'overflow:hidden' }, G.judgment.map(function (j) {
+        return h('li', { class: 'vrow' }, h('span', { class: 'sigmark sig-lo' }), h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', null, j.text), h('span', { class: 'small muted' }, (j.why ? j.why + ' · ' : '') + (j.source || ''))));
+      }))));
+    var keys = Object.keys(G.current);
+    if (keys.length) page.appendChild(h('section', { class: 'section' }, sectionHead('Ratchet', h('span', { class: 'small muted' }, G.baseline ? 'Baseline from ' + G.baseline.at + (G.baseline.head ? ' · ' + G.baseline.head.slice(0, 7) : '') : 'No baseline: run guard.py --baseline')),
+      table(560, [th('Structural count'), th('Baseline', 1), th('Now', 1), th('')], keys.map(function (k) {
+        var b = G.baseline && G.baseline.metrics ? G.baseline.metrics[k] : null, up = b != null && G.current[k] > b, down = b != null && G.current[k] < b;
+        return h('tr', null, h('td', null, METRIC_LABEL[k] || k), h('td', { class: 'r mono' }, b == null ? '—' : b), h('td', { class: 'r mono', style: up ? 'color:var(--hi-fg);font-weight:600' : '' }, G.current[k]),
+          h('td', { class: 'small' }, up ? h('span', { class: 'fail-pill' }, 'Above baseline') : down ? h('span', { class: 'ok-pill' }, 'Improved — tighten with --baseline') : h('span', { class: 'muted' }, 'Holding')));
+      }))));
+  }
+
+  if (tab === 'proof') {
+    if (!G.replay) { page.appendChild(h('div', { class: 'box empty' }, 'No replay yet. Run: python3 .cartographer/bin/guard.py --replay')); return page; }
+    var W = G.replay.window;
+    page.appendChild(h('p', { class: 's13', style: 'margin:0;color:var(--ink-2);max-width:820px' }, 'Each rule, as configured today, was run against the ' + W.commits + ' non-merge commits of the last ' + W.days + ' days. ',
+      h('strong', null, W.followedByFixOrRevert + ' of them (' + Math.round(100 * W.followedByFixOrRevert / Math.max(1, W.commits)) + '%)'), ' were reverted or followed by a fix to the same files within 14 days — the base rate. A rule earns its place when the commits it fires on needed fixing more often than that. Correlational: read the examples.'));
+    var focus = r.query.rule;
+    G.replay.rules.filter(function (q) { return q.replayable; }).sort(function (a, b) { return (b.rule === focus) - (a.rule === focus) || (b.lift || 0) - (a.lift || 0); }).forEach(function (q) {
+      var card = h('div', { class: 'proof', id: 'proof-' + q.rule },
+        h('div', { class: 'proof-head' },
+          h('div', { style: 'display:flex;flex-direction:column;gap:4px;min-width:240px' }, h('code', { style: 'font-size:13px;font-weight:600;color:var(--ink)' }, q.rule),
+            h('span', { class: 's13', style: 'color:var(--ink-2)' }, q.fired ? 'Fired on ' + q.fired + ' of ' + q.commits + ' commits (' + q.firedPct + '%) · ' + q.followedByFixOrRevert + ' later fixed or reverted' + (q.lift ? ' · ' + q.lift + '× the base rate' : '') : 'Never fired in the window')),
+          q.fired ? h('div', { style: 'flex:0 1 320px;min-width:240px' }, rateBars(q.hitRatePct, q.baseRatePct)) : null),
+        q.examples && q.examples.length ? h('div', null, q.examples.map(function (e) {
+          return h('div', { class: 'crow' }, h('code', { style: 'color:var(--ink-2)' }, e.sha.slice(0, 9)), h('span', { class: 'small muted' }, shortDate(e.date)),
+            h('span', { style: 'display:flex;flex-direction:column;gap:2px;min-width:0' }, h('span', null, e.subject), h('span', { class: 'small muted' }, (e.where ? e.where + ' — ' : '') + e.message)),
+            e.outcome ? h('span', { class: 'otag ' + e.outcome }, e.outcome === 'fixed' ? 'Fixed within 14 days' : 'Reverted') : h('span', { class: 'small muted' }, 'No follow-up'));
+        })) : null);
+      page.appendChild(card);
+    });
+    var nr = G.replay.rules.filter(function (q) { return !q.replayable; });
+    if (nr.length) page.appendChild(h('p', { class: 'small muted', style: 'margin:0' }, 'Not replayable (they check today’s model or facts): ' + nr.map(function (q) { return q.rule; }).join(', ') + '.'));
+    if (focus) setTimeout(function () { var el = document.getElementById('proof-' + focus); if (el) el.scrollIntoView({ block: 'start' }); }, 0);
+  }
+
+  if (tab === 'lessons') {
+    if (!L) { page.appendChild(h('div', { class: 'box empty' }, 'No lessons harvested yet. Run: python3 .cartographer/bin/learn.py')); return page; }
+    var occ = L.occurrences || {}, OL = { 'follow-up-fix': 'needed a fix within 14 days', 'missed-partner': 'skipped a usual partner file, then fixed it', revert: 'were reverted', 'migration-edit': 'edited an applied migration' };
+    page.appendChild(h('p', { class: 's13', style: 'margin:0;color:var(--ink-2);max-width:820px' }, 'Mistakes are read from git, not opinions. In the last ' + L.window.days + ' days: ',
+      Object.keys(occ).map(function (k, i) { return [i ? '; ' : '', h('strong', null, occ[k]), ' commits ' + (OL[k] || k)]; }), '. Repeats form classes; each class is checked against today’s rules by replay. Gaps are what /cartograph-learn turns into rules, tests or design changes.'));
+    var CV = { gap: ['Gap', 'cov-gap'], 'partly covered': ['Partly covered', 'cov-part'], covered: ['Covered', 'cov-ok'] }, KL = { 'follow-up-fix': 'Fixed again', 'missed-partner': 'Missed partner', revert: 'Reverted', 'migration-edit': 'Migration edit' };
+    page.appendChild(h('section', { class: 'section' }, sectionHead('Repeated mistakes', h('span', { class: 'small muted' }, L.classes.length + ' classes')),
+      h('div', { class: 'box', style: 'overflow:hidden' }, L.classes.map(function (c) {
+        var key = c.key.indexOf(' -> ') > 0 ? c.key.split(' -> ').map(short).join(' → ') : (COMP[c.key] ? cname(c.key) : short(c.key));
+        var cand = c.candidate || {};
+        return h('details', { class: 'cls' },
+          h('summary', null, h('span', { class: 'cov ' + CV[c.coverage][1] }, CV[c.coverage][0]), h('span', { class: 'small', style: 'flex:0 0 104px;color:var(--ink-3)' }, KL[c.kind] || c.kind),
+            h('code', { style: 'flex:1 1 auto;min-width:0;color:var(--ink);word-break:break-all' }, key), h('span', { class: 'mono small' }, '×' + c.occurrences),
+            h('span', { class: 'small muted', style: 'flex:0 0 auto' }, c.coveredBy.length ? 'by ' + c.coveredBy[0].rule : (cand.level ? 'fix with a ' + cand.level : ''))),
+          h('div', { style: 'padding:4px 0 10px' },
+            c.examples.map(function (e) { return h('div', { class: 'crow' }, h('code', { style: 'color:var(--ink-2)' }, e.sha.slice(0, 9)), h('span', { class: 'small muted' }, shortDate(e.date)), h('span', { style: 'display:flex;flex-direction:column;gap:2px;min-width:0' }, h('span', null, e.subject), h('span', { class: 'small muted' }, e.detail)), h('span', null)); }),
+            cand.hint || (cand.rule && cand.rule.id) ? h('div', { class: 's13', style: 'padding:8px 16px 0;color:var(--ink-2)' }, h('strong', null, 'Next: '), cand.hint || ('proposed rule '), cand.rule && cand.rule.id ? h('code', null, cand.rule.id) : null) : null));
+      }))));
+    var side2 = [];
+    (L.ruleHealth || []).forEach(function (x) { side2.push(h('li', { class: 'vrow' }, h('span', { class: 'sigmark sig-md' }), h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', null, h('code', null, x.rule), ' — ', h('strong', null, x.issue)), h('span', { class: 'small muted' }, x.detail)))); });
+    ((L.guardLog || {}).repeats || []).forEach(function (x) { side2.push(h('li', { class: 'vrow' }, h('span', { class: 'sigmark sig-lo' }), h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', null, 'Agents hit ', h('code', null, x.rule), ' in ' + x.blockedRuns + ' guard runs'), h('span', { class: 'small muted' }, 'They learn about it too late: surface it in guard.py --explain and the area’s notes.')))); });
+    if (side2.length) page.appendChild(h('section', { class: 'section' }, sectionHead('Rule health'), h('ul', { class: 'list box', style: 'overflow:hidden' }, side2)));
+  }
+
+  if (tab === 'activity') {
+    var simMode = r.query.src === 'sim', filt = r.query.f || 'all';
+    var EV = ((simMode ? G.simulated : G.events) || []).slice().reverse();
+    var SRC = { 'edit-hook': 'Agent edit hook', 'command-hook': 'Agent command hook', 'stop-hook': 'Stop hook', 'cursor-stop': 'Cursor stop hook', 'pre-commit': 'Pre-commit', ci: 'CI', cli: 'Command line', simulation: 'Diff rules' };
+    var norm = function (d) { return d === 'pass' ? 'allow' : (d === 'release' ? 'block' : d); };
+    var counts = { all: EV.length, block: 0, warn: 0, allow: 0 };
+    EV.forEach(function (e) { var d = norm(e.decision); if (counts[d] != null) counts[d]++; });
+    page.appendChild(h('div', { class: 'row', style: 'gap:6px' },
+      h('a', { href: '#/guard?tab=activity', class: 'chip', style: !simMode ? 'border-color:var(--blue);color:var(--blue);background:var(--blue-tint)' : '' }, 'Live activity ' + (G.events || []).length),
+      h('a', { href: '#/guard?tab=activity&src=sim', class: 'chip', style: simMode ? 'border-color:var(--blue);color:var(--blue);background:var(--blue-tint)' : '' }, 'Simulated history ' + (G.simulated || []).length)));
+    page.appendChild(h('p', { class: 's13', style: 'margin:0;color:var(--ink-2);max-width:840px' }, simMode
+      ? ['Every past commit replayed through today’s rules as if the guardrails had been live, dated at the commit. Agent-hook rules are judged on what each commit added, standing in for an agent typing it. Command rules cannot be replayed. Simulated: nothing was blocked at the time. From ', h('code', null, '.cartographer/log/simulated.jsonl'), ' (', h('code', null, 'guard.py --simulate-history'), ').']
+      : ['Every decision the guardrails made, newest first: agent edits and commands allowed or refused before they ran, Stop-hook verdicts, pre-commit and CI runs. From ', h('code', null, '.cartographer/log/events.jsonl'), '; print it with ', h('code', null, 'guard.py --log'), '.']));
+    // weekly timeline
+    var weeks = {}; EV.forEach(function (e) { if (!e.at) return; var d = new Date(e.at); var m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7))); var k = m.toISOString().slice(0, 10); var w = weeks[k] = weeks[k] || { block: 0, warn: 0, allow: 0 }; var n = norm(e.decision); if (w[n] != null) w[n]++; });
+    var wk = Object.keys(weeks).sort();
+    if (wk.length > 1 || simMode) {
+      var mx = Math.max.apply(null, wk.map(function (k) { return weeks[k].block + weeks[k].warn; }).concat([1]));
+      page.appendChild(h('section', { class: 'section' }, sectionHead(simMode ? 'What would have fired, by week' : 'Decisions by week', h('span', { class: 'small muted' }, 'Blocked and warned; weeks start Monday (UTC)')),
+        h('div', { class: 'box', style: 'padding:16px;display:flex;align-items:flex-end;gap:6px;height:170px;overflow-x:auto' }, wk.map(function (k) {
+          var w = weeks[k];
+          return h('div', { style: 'flex:1 0 34px;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end', title: k + ': ' + w.block + ' blocked, ' + w.warn + ' warned, ' + w.allow + ' passed' },
+            h('span', { class: 'small mono', style: 'color:var(--ink-2)' }, (w.block + w.warn) || ''),
+            h('div', { style: 'width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:100px' },
+              h('div', { style: 'background:var(--blue-3);height:' + Math.round(w.warn / mx * 100) + 'px' }),
+              h('div', { style: 'background:var(--blue);height:' + Math.round(w.block / mx * 100) + 'px;border-radius:0 0 2px 2px' })),
+            h('span', { class: 'small muted', style: 'white-space:nowrap' }, shortDate(k)));
+        })),
+        h('div', { class: 'row small muted', style: 'gap:14px' }, h('span', null, h('span', { style: 'display:inline-block;width:10px;height:10px;background:var(--blue);margin-right:6px' }), 'Blocked'), h('span', null, h('span', { style: 'display:inline-block;width:10px;height:10px;background:var(--blue-3);margin-right:6px' }), 'Warned'))));
+    }
+    page.appendChild(h('div', { class: 'row', style: 'gap:6px' }, [['all', 'All'], ['block', 'Blocked'], ['warn', 'Warned'], ['allow', simMode ? 'Passed' : 'Allowed']].map(function (f) {
+      return h('a', { href: '#/guard?tab=activity' + (simMode ? '&src=sim' : '') + '&f=' + f[0], class: 'chip', style: filt === f[0] ? 'border-color:var(--blue);color:var(--blue);background:var(--blue-tint)' : '' }, f[1] + ' ' + counts[f[0]]);
+    })));
+    var rows = EV.filter(function (e) { return filt === 'all' || norm(e.decision) === filt; }).slice(0, 300);
+    if (!rows.length) { page.appendChild(h('div', { class: 'box empty' }, EV.length ? 'Nothing matches this filter.' : (simMode ? 'No simulation yet. Run: python3 .cartographer/bin/guard.py --simulate-history' : 'No guardrail activity logged yet. Hooks, pre-commit and CI write to .cartographer/log/events.jsonl as they run.'))); return page; }
+    var DC = { block: 'fail-pill', release: 'fail-pill', warn: 'cov cov-gap', allow: 'ok-pill', pass: 'ok-pill' };
+    var DL = simMode ? { block: 'Would block', warn: 'Would warn', pass: 'Passes' } : { block: 'Blocked', release: 'Released', warn: 'Warned', allow: 'Allowed', pass: 'Passed' };
+    page.appendChild(table(900, [th('Time'), th('Where'), th('Decision'), th(simMode ? 'Commit' : 'What'), th('Rules and message')], rows.map(function (e) {
+      var what = simMode ? h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', null, h('code', null, (e.sha || '').slice(0, 9)), ' ', e.subject || ''), h('span', { class: 'small muted' }, (e.author || '') + (e.kind === 'tool' ? ' · ' + e.target : '') + (e.outcome ? ' · later ' + e.outcome : '')))
+        : h('code', { style: 'word-break:break-all;color:var(--ink-2)' }, (e.kind === 'run' ? (e.label || e.mode || '') + ' · ' + (e.files != null ? e.files + ' files' : '') : ((e.tool || '') + ' ' + (e.target || ''))).slice(0, 160));
+      return h('tr', null,
+        h('td', { class: 'mono small', style: 'white-space:nowrap' }, (e.at || '').slice(0, 10) + ' ' + (e.at || '').slice(11, 16), e.session ? h('div', { class: 'muted' }, 'session ' + e.session.slice(0, 8)) : null),
+        h('td', { class: 'small', style: 'white-space:nowrap' }, SRC[e.source] || e.source || '', e.ms != null ? h('div', { class: 'muted' }, e.ms + ' ms') : null),
+        h('td', null, h('span', { class: DC[e.decision] || 'cov cov-ok' }, DL[e.decision] || e.decision || '')),
+        h('td', null, what),
+        h('td', { class: 's13' }, (e.rules || []).map(function (x) { return h('code', { style: 'margin-right:6px;color:var(--ink)' }, x); }),
+          (e.warnings || []).map(function (x) { return h('code', { style: 'margin-right:6px;color:var(--muted)' }, x); }),
+          e.message && e.decision !== 'allow' ? h('div', { style: 'color:var(--ink-2)' }, e.message) : null));
+    })));
+  }
+
+  if (tab === 'exceptions') {
+    page.appendChild(h('section', { class: 'section' }, sectionHead('Exceptions', h('span', { class: 'small muted' }, 'Each needs a reason, an expiry and an approver; expired ones stop suppressing')),
+      G.exceptions.length ? table(820, [th('Rule'), th('Where'), th('Reason'), th('Approved by'), th('Expires')], G.exceptions.map(function (e) {
+        var st = e.state === 'valid' ? (e.daysLeft <= 14 ? h('span', { class: 'cov cov-gap' }, e.daysLeft + ' days left') : h('span', { class: 'small muted' }, e.daysLeft + ' days left')) : h('span', { class: 'fail-pill' }, e.state === 'expired' ? 'Expired' : 'Incomplete');
+        return h('tr', null, h('td', null, h('code', null, e.rule)), h('td', null, h('code', { style: 'word-break:break-all' }, e.path || '**')), h('td', { class: 's13' }, e.reason || '—'), h('td', { class: 'mono small' }, e.approvedBy || '—'),
+          h('td', null, h('div', { style: 'display:flex;flex-direction:column;gap:2px' }, h('span', { class: 'mono small', style: 'white-space:nowrap' }, e.expires || '—'), st)));
+      })) : h('div', { class: 'box empty' }, 'No exceptions.')));
+    page.appendChild(h('section', { class: 'section' }, sectionHead('Proposed rules', h('span', { class: 'small muted' }, 'Written by agents to guardrails.proposed.json; a person accepts them')),
+      G.proposed.length ? h('div', { class: 'box', style: 'overflow:hidden' }, G.proposed.map(function (x) {
+        var q = x._replay || {};
+        return h('div', { class: 'vrow' }, h('span', { class: 'sigmark sig-lo' }),
+          h('div', { style: 'display:flex;flex-direction:column;gap:4px;flex:1;min-width:0' }, h('span', { class: 'row', style: 'gap:8px' }, h('code', { style: 'font-weight:600;color:var(--ink)' }, x.id), h('span', { class: 'small mono muted' }, x.type), sevTag(ruleSev(x))),
+            h('span', { class: 's13', style: 'color:var(--ink-2)' }, x.description || ''), x._why ? h('span', { class: 'small muted' }, x._why) : null,
+            q.replayable ? h('div', { style: 'max-width:360px;margin-top:4px' }, rateBars(q.hitRatePct, q.baseRatePct)) : null,
+            h('code', { class: 'cmd', style: 'margin-top:4px' }, 'python3 .cartographer/bin/guard.py --accept ' + x.id)));
+      })) : h('div', { class: 'box empty' }, 'No proposals waiting.')));
+  }
+  return page;
+};
+
+// ------------------------------------------------------------------ command palette
+var PAL = [];
+M.components.forEach(function (c) { PAL.push({ t: 'Component', n: c.name, d: (c.paths || [])[0] || c.kind || '', href: '#/component/' + encodeURIComponent(c.id), s: [c.name, c.id, (c.paths || []).join(' '), (c.tech || []).join(' '), c.summary || ''].join(' ') }); });
+M.flows.forEach(function (f) { PAL.push({ t: 'Flow', n: f.name, d: f.trigger || '', href: '#/flows/' + encodeURIComponent(f.id), s: f.name + ' ' + (f.trigger || '') + ' ' + (f.summary || '') }); });
+M.snippets.forEach(function (s) { PAL.push({ t: 'Snippet', n: s.title, d: short(s.path) + ':' + s.start, href: '#/code/' + encodeURIComponent(s.id), s: s.title + ' ' + s.path + ' ' + (s.why || '') + ' ' + (s.code || '').slice(0, 400) }); });
+M.risks.forEach(function (r) { PAL.push({ t: 'Risk', n: r.title, d: r.severity, href: '#/risks/' + encodeURIComponent(r.id), s: r.title + ' ' + (r.detail || '') }); });
+M.decisions.forEach(function (d) { PAL.push({ t: 'Decision', n: d.title, d: d.status || '', href: '#/risks', s: d.title + ' ' + (d.decision || '') }); });
+M.glossary.forEach(function (g) { PAL.push({ t: 'Term', n: g.term, d: g.definition, href: '#/risks', s: g.term + ' ' + g.definition }); });
+var seenFiles = {};
+M.components.forEach(function (c) { (c.keyFiles || []).forEach(function (f) { if (seenFiles[f.path]) return; seenFiles[f.path] = 1; PAL.push({ t: 'File', n: base(f.path), d: c.name + (f.role ? ' · ' + f.role : ''), href: '#/component/' + encodeURIComponent(c.id), s: f.path + ' ' + (f.role || '') }); }); });
+(F.hotspots || []).forEach(function (x) { if (seenFiles[x.path]) return; seenFiles[x.path] = 1; PAL.push({ t: 'File', n: base(x.path), d: 'Hotspot · ' + x.commits + ' commits', href: x.component ? '#/component/' + encodeURIComponent(x.component) + '?tab=history' : '#/changes', s: x.path }); });
+(F.prs || []).forEach(function (p) { PAL.push({ t: 'PR', n: (p.meta && p.meta.number ? '#' + p.meta.number + ' ' : '') + p.title, d: p.stats.size + ' · ' + p.stats.files + ' files', href: '#/pr/' + encodeURIComponent(p.id), s: p.title + ' ' + p.id }); });
+((F.structure || {}).api || []).slice(0, 800).forEach(function (a) { PAL.push({ t: 'Interface', n: (a.method ? a.method + ' ' : '') + (a.name || a.kind), d: short(a.path) + ':' + a.line, href: '#/structure?tab=interfaces', s: a.kind + ' ' + a.name + ' ' + a.path }); });
+[['Overview', '#/overview'], ['Architecture', '#/architecture'], ['Structure', '#/structure'], ['Key code', '#/code'], ['Changes & trends', '#/changes'], ['Coupling', '#/changes?tab=coupling'], ['Knowledge', '#/changes?tab=knowledge'], ['AI-assisted', '#/changes?tab=ai'], ['Pull requests', '#/prs'], ['Decisions & risks', '#/risks'], ['Guardrails', '#/guard'], ['Guardrail proof', '#/guard?tab=proof'], ['Lessons', '#/guard?tab=lessons']].forEach(function (v) { PAL.push({ t: 'View', n: v[0], d: '', href: v[1], s: v[0] }); });
+
+var pal = document.getElementById('palette'), palIn = document.getElementById('palInput'), palList = document.getElementById('palList'), palSel = 0, palItems = [];
+function score(item, q) {
+  if (!q) return 1;
+  var n = item.n.toLowerCase(), s = item.s.toLowerCase(), words = q.split(/\s+/), sc = 0;
+  for (var i = 0; i < words.length; i++) {
+    var w = words[i]; if (!w) continue;
+    if (n.indexOf(w) === 0) sc += 6; else if (n.indexOf(w) > 0) sc += 4; else if (s.indexOf(w) >= 0) sc += 1; else return 0;
+  }
+  return sc;
+}
+function palRender() {
+  var q = palIn.value.trim().toLowerCase();
+  palItems = PAL.map(function (it) { return [score(it, q), it]; }).filter(function (x) { return x[0] > 0; }).sort(function (a, b) { return b[0] - a[0]; }).slice(0, 40).map(function (x) { return x[1]; });
+  if (palSel >= palItems.length) palSel = 0;
+  palList.replaceChildren.apply(palList, palItems.length ? palItems.map(function (it, i) {
+    return h('li', null, h('button', { type: 'button', role: 'option', 'aria-selected': String(i === palSel), onclick: function () { palGo(it); }, onmousemove: function () { if (palSel !== i) { palSel = i; palRender(); } } },
+      h('span', { class: 'ty' }, it.t), h('span', { class: 'nm' }, it.n), h('span', { class: 'ds' }, it.d)));
+  }) : [h('li', { class: 'empty' }, 'No matches')]);
+  var on = palList.querySelector('[aria-selected=true]'); if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function palOpen() { palIn.value = ''; palSel = 0; palRender(); if (!pal.open) pal.showModal(); palIn.focus(); }
+function palGo(it) { pal.close(); if (it.href.indexOf('#') === 0) location.hash = it.href; else window.open(it.href, '_blank', 'noopener'); }
+palIn.addEventListener('input', function () { palSel = 0; palRender(); });
+palIn.addEventListener('keydown', function (e) {
+  if (e.key === 'ArrowDown') { palSel = Math.min(palItems.length - 1, palSel + 1); palRender(); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { palSel = Math.max(0, palSel - 1); palRender(); e.preventDefault(); }
+  else if (e.key === 'Enter' && palItems[palSel]) { palGo(palItems[palSel]); e.preventDefault(); }
+});
+pal.addEventListener('click', function (e) { if (e.target === pal) pal.close(); });
+document.getElementById('openPalette').addEventListener('click', palOpen);
+document.getElementById('printBtn').addEventListener('click', function () { window.print(); });
+document.addEventListener('keydown', function (e) {
+  var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); palOpen(); }
+  else if (e.key === '/' && !typing && !pal.open) { e.preventDefault(); palOpen(); }
+});
+
+render();
+})();
+</script>
+</body>
+</html>

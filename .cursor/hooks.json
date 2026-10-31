@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "stop": [
+      {
+        "command": "python3 .cartographer/hooks/stop_guard.py --cursor"
+      }
+    ]
+  },
+  "version": 1
+}

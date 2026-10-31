@@ -1,0 +1,131 @@
+{
+  "$comment": "The fence's configuration, written by the factory onboarding from what this repository already uses. People own this file (CODEOWNERS). docs/fence.md explains each field.",
+  "mode": "whole repository",
+  "builtins": [
+    "secrets",
+    "workflows",
+    "dependencies",
+    "map-coverage",
+    "guard",
+    "formal",
+    "exceptions",
+    "duplicates"
+  ],
+  "checks": [
+    {
+      "id": "compile",
+      "category": "tests",
+      "title": "Main and test code compile",
+      "run": [
+        "./mvnw",
+        "-B",
+        "-ntp",
+        "-q",
+        "-Dspring-javaformat.skip=true",
+        "-Dcheckstyle.skip=true",
+        "test-compile"
+      ],
+      "parse": "exit",
+      "hint": "Fix the compile errors above."
+    },
+    {
+      "id": "format",
+      "category": "style",
+      "title": "Code is formatted (Spring Java Format)",
+      "run": [
+        "./mvnw",
+        "-B",
+        "-ntp",
+        "-q",
+        "spring-javaformat:validate"
+      ],
+      "parse": "exit",
+      "hint": "./mvnw -B -ntp -q spring-javaformat:apply (the gardener does this)"
+    },
+    {
+      "id": "checkstyle",
+      "category": "practices",
+      "title": "Checkstyle (the repository's rules)",
+      "run": [
+        "./mvnw",
+        "-B",
+        "-ntp",
+        "-q",
+        "checkstyle:check"
+      ],
+      "parse": "exit",
+      "hint": "Fix the Checkstyle findings above."
+    },
+    {
+      "id": "unit",
+      "category": "tests",
+      "title": "Tests",
+      "run": [
+        "./mvnw",
+        "-B",
+        "-ntp",
+        "-q",
+        "-Dspring-javaformat.skip=true",
+        "-Dcheckstyle.skip=true",
+        "test"
+      ],
+      "parse": "exit",
+      "hint": "Fix the failing tests."
+    }
+  ],
+  "lintCategories": {
+    "no-eval": "security",
+    "no-implied-eval": "security",
+    "no-new-func": "security",
+    "no-await-in-loop": "performance",
+    "@typescript-eslint/*": "practices"
+  },
+  "secrets": {
+    "scope": "all",
+    "ignore": [
+      "**/package-lock.json",
+      "**/yarn.lock",
+      "**/*.min.js"
+    ]
+  },
+  "workflows": {
+    "scope": "all"
+  },
+  "duplicates": {
+    "paths": [
+      "."
+    ],
+    "pattern": "**/*.{ts,tsx,js,mjs,py,java}",
+    "glob": "**/*.{ts,tsx,js,mjs,py,java}",
+    "minTokens": 50
+  },
+  "java": {
+    "build": "maven",
+    "version": "17",
+    "tools": [
+      "javaformat",
+      "checkstyle"
+    ]
+  },
+  "code": [
+    "**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,java,cs,rs}"
+  ],
+  "fixers": {
+    "format": [
+      [
+        "./mvnw",
+        "-B",
+        "-ntp",
+        "-q",
+        "spring-javaformat:apply"
+      ]
+    ],
+    "guard:ratchet": [
+      [
+        "python3",
+        ".cartographer/bin/check.py",
+        "--fix-lines"
+      ]
+    ]
+  }
+}

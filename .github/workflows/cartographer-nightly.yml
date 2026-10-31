@@ -1,0 +1,56 @@
+# Cartographer nightly: recompute facts, harvest lessons, prove the guardrails against
+# history, verify the model against the code, and publish the viewer as an artifact.
+# A failing check means a claim in the model (snippet, cited line, path) no longer
+# matches the code. Lessons and replay results land in the viewer's Guardrails page.
+name: Cartographer nightly
+on:
+  schedule:
+    - cron: "17 6 * * 1-5"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Facts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 .cartographer/bin/collect.py
+          python3 .cartographer/bin/graph.py
+          python3 .cartographer/bin/prs.py --detail 100
+      - name: Lessons and guardrail replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 .cartographer/bin/learn.py --api
+          python3 .cartographer/bin/guard.py --suggest
+          python3 .cartographer/bin/guard.py --export .cartographer/dist/guardrails.html
+          if [ -f .cartographer/outcomes.json ]; then
+            python3 .cartographer/bin/guard.py --simulate-history
+            python3 .cartographer/bin/guard.py --outcomes .cartographer/dist/outcomes.html
+          fi
+      - name: Build viewer
+        run: python3 .cartographer/bin/build.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cartographer
+          path: |
+            .cartographer/dist/cartograph.html
+            .cartographer/dist/cartograph.json
+            .cartographer/dist/guardrails.html
+            .cartographer/dist/outcomes.html
+            .cartographer/facts/lessons.json
+            .cartographer/facts/guard-replay.json
+            .cartographer/facts/guard-suggestions.json
+      - name: Verify model
+        run: python3 .cartographer/bin/check.py
