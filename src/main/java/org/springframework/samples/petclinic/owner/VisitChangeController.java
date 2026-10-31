@@ -104,10 +104,10 @@ class VisitChangeController {
 		return "redirect:/owners/{ownerId}";
 	}
 
-	private Owner findOwner(int ownerId) {
-		return this.owners.findById(ownerId)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found: " + ownerId));
-	}
+    private Owner findOwner(int ownerId)
+    {
+        return this.owners.findById(ownerId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found: " + ownerId));
+    }
 
 	private Pet findPet(Owner owner, int petId) {
 		Pet pet = owner.getPet(petId);
