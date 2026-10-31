@@ -97,7 +97,8 @@
     ],
     "pattern": "**/*.{ts,tsx,js,mjs,py,java}",
     "glob": "**/*.{ts,tsx,js,mjs,py,java}",
-    "minTokens": 50
+    "minTokens": 50,
+    "ignorePattern": "import (static )?[a-zA-Z0-9_.*]+;"
   },
   "java": {
     "build": "maven",

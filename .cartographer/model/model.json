@@ -402,6 +402,21 @@
           "line": 1
         }
       ]
+    },
+    {
+      "id": "tests",
+      "name": "Tests",
+      "layer": "entry",
+      "paths": [
+        "src/test"
+      ],
+      "summary": "JUnit 5 tests: @WebMvcTest controller tests with a mocked OwnerRepository, JPA tests against H2, and integration tests for MySQL and PostgreSQL through Testcontainers (skipped without Docker).",
+      "evidence": [
+        {
+          "path": "src/test/java/org/springframework/samples/petclinic/owner/VisitControllerTests.java",
+          "line": 47
+        }
+      ]
     }
   ],
   "edges": [
