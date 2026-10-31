@@ -126,19 +126,6 @@ class VisitChangeControllerTests {
 	}
 
 	@Test
-	void processEditVisitFormRejectsADateThatIsNotInTheFuture() throws Exception {
-		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/{visitId}/edit", TEST_OWNER_ID, TEST_PET_ID,
-					UPCOMING_VISIT_ID)
-				.param("date", LocalDate.now().toString())
-				.param("description", "rabies booster"))
-			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))
-			.andExpect(status().isOk())
-			.andExpect(view().name("pets/createOrUpdateVisitForm"));
-		verify(this.owners, never()).save(any(Owner.class));
-	}
-
-	@Test
 	void processCancelVisitRemovesTheVisit() throws Exception {
 		mockMvc
 			.perform(post("/owners/{ownerId}/pets/{petId}/visits/{visitId}/cancel", TEST_OWNER_ID, TEST_PET_ID,

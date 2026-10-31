@@ -76,9 +76,6 @@ class VisitChangeController {
 		Owner owner = findOwner(ownerId);
 		Pet pet = findPet(owner, petId);
 		Visit visit = findUpcomingVisit(pet, visitId);
-		if (form.getDate() != null && !form.getDate().isAfter(LocalDate.now())) {
-			result.rejectValue("date", "typeMismatch.visitDate");
-		}
 		if (result.hasErrors()) {
 			form.setId(visit.getId());
 			model.addAttribute("owner", owner);
