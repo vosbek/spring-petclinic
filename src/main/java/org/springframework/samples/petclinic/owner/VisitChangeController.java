@@ -33,8 +33,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.validation.Valid;
 
 /**
- * Changing and cancelling upcoming visits. Kept apart from {@link VisitController},
- * whose model attribute adds a new visit to the pet before every request.
+ * Changing and cancelling upcoming visits. Kept apart from {@link VisitController}, whose
+ * model attribute adds a new visit to the pet before every request.
  */
 @Controller
 class VisitChangeController {

@@ -165,12 +165,10 @@ class VisitChangeControllerTests {
 
 	@Test
 	void unknownVisitsAreNotFound() throws Exception {
-		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/{visitId}/cancel", TEST_OWNER_ID, TEST_PET_ID, 999))
+		mockMvc.perform(post("/owners/{ownerId}/pets/{petId}/visits/{visitId}/cancel", TEST_OWNER_ID, TEST_PET_ID, 999))
 			.andExpect(status().isNotFound());
 		mockMvc
-			.perform(get("/owners/{ownerId}/pets/{petId}/visits/{visitId}/edit", TEST_OWNER_ID, 999,
-					UPCOMING_VISIT_ID))
+			.perform(get("/owners/{ownerId}/pets/{petId}/visits/{visitId}/edit", TEST_OWNER_ID, 999, UPCOMING_VISIT_ID))
 			.andExpect(status().isNotFound());
 		verify(this.owners, never()).save(any(Owner.class));
 	}
