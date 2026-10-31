@@ -59,6 +59,7 @@ jobs:
           regressions=$(node -p "require('./.cache/fence/report.json').regressions.join(', ')")
           # Only what a fixer changed counts; the fence's own reports live in .cache/ (git-ignored).
           changes=$(git status --porcelain -- . ':(exclude).cache')
+          echo "::notice title=Gardener::fixers run: ${fixed:-none}; regressions: ${regressions:-none}; files changed: $(printf '%s' "$changes" | grep -c . || true)"
           if [ -z "$fixed" ] || [ -z "$changes" ]; then echo "Nothing a fixer changed."; exit 0; fi
           if [ -n "$regressions" ]; then echo "::warning::A fixer broke $regressions, so nothing is committed."; exit 0; fi
           git config user.name "fence-gardener"
@@ -78,8 +79,9 @@ jobs:
         run: |
           label="fence: needs a person"
           gh label create "$label" --repo "$REPO" --color B60205 --description "The fence failed and the gardener could not fix it" 2>/dev/null || true
-          if [ "$CODE" = "0" ]; then gh pr edit "$PR" --repo "$REPO" --remove-label "$label" 2>/dev/null || true; exit 0; fi
-          gh pr edit "$PR" --repo "$REPO" --add-label "$label"
+          # The REST API, not "gh pr edit": the latter can exit 1 after applying the label (it also queries classic projects).
+          if [ "$CODE" = "0" ]; then gh api -X DELETE "repos/$REPO/issues/$PR/labels/$(printf %s "$label" | jq -sRr @uri)" > /dev/null 2>&1 || true; exit 0; fi
+          gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=$label" > /dev/null
   nightly:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
