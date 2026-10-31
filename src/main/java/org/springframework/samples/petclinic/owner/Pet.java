@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic.owner;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -53,7 +54,7 @@ public class Pet extends NamedEntity {
 	@JoinColumn(name = "type_id")
 	private PetType type;
 
-	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
 	@JoinColumn(name = "pet_id")
 	@OrderBy("date ASC")
 	private final Set<Visit> visits = new LinkedHashSet<>();
@@ -80,6 +81,28 @@ public class Pet extends NamedEntity {
 
 	public void addVisit(Visit visit) {
 		getVisits().add(visit);
+	}
+
+	/**
+	 * Return the visit with the given id, or null if this pet has no such visit.
+	 * @param id to look up
+	 * @return the visit if found
+	 */
+	public Visit getVisit(Integer id) {
+		for (Visit visit : getVisits()) {
+			if (Objects.equals(visit.getId(), id)) {
+				return visit;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Remove a visit from this pet. The visit row is deleted when the owner is saved.
+	 * @param visit to remove
+	 */
+	public void removeVisit(Visit visit) {
+		getVisits().remove(visit);
 	}
 
 }

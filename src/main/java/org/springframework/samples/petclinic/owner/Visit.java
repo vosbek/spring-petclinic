@@ -67,4 +67,12 @@ public class Visit extends BaseEntity {
 		this.description = description;
 	}
 
+	/**
+	 * Whether this visit is still to come, so it can be changed or cancelled.
+	 * @return true when the visit date is after today
+	 */
+	public boolean isUpcoming() {
+		return this.date != null && this.date.isAfter(LocalDate.now());
+	}
+
 }
