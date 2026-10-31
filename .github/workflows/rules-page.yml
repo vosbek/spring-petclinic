@@ -1,8 +1,8 @@
 # The rules page: every guard rule, fence check and exception in this repository, the evidence for each, who
 # approves changes to them, and what is waiting on a person. Rebuilt from the repository's own files on every
 # merge to the default branch, so it cannot drift from them. The fence and guard rules decide; this only shows.
-# Publishing to GitHub Pages is opt-in: set Settings > Pages > Source to "GitHub Actions" and the repository
-# variable RULES_PAGE to "pages". Without it, the page is kept as a build artifact of each run.
+# It publishes to GitHub Pages when a person has set Settings > Pages > Source to "GitHub Actions"; otherwise the
+# page is kept as a build artifact of each run.
 name: Rules page
 on:
   push:
@@ -29,11 +29,22 @@ jobs:
       contents: read
       issues: read
       pull-requests: read
+      pages: read
+    outputs:
+      pages: ${{ steps.pages.outputs.enabled }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Is GitHub Pages set to publish from Actions?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          type=$(gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null || true)
+          echo "enabled=$([ "$type" = workflow ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: Pull requests labelled for a person
         env:
           GH_TOKEN: ${{ github.token }}
@@ -57,7 +68,7 @@ jobs:
         with:
           path: _site
   publish:
-    if: github.event_name != 'pull_request' && vars.RULES_PAGE == 'pages'
+    if: github.event_name != 'pull_request' && needs.build.outputs.pages == 'true'
     needs: build
     runs-on: ubuntu-latest
     permissions:

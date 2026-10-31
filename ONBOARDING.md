@@ -9,5 +9,5 @@ Finish with the `factory-onboard` skill. A person does the items marked (person)
 - [ ] Check the formal model: `python3 .cartographer/bin/formal.py check` (needs Java 11+)
 - [ ] (person) Create a private hidden-tests repository from the template's `factory/hidden-tests/`
 - [ ] (person) Secrets `HIDDEN_TESTS_TOKEN`, `HIDDEN_TESTS_REPORT_TOKEN`, `GARDENER_TOKEN`; variable `HIDDEN_TESTS_REPO`
-- [ ] (person) Rules page on GitHub Pages: Settings > Pages > Source "GitHub Actions", and the variable `RULES_PAGE` = `pages` (`python3 .cartographer/bin/rules_page.py` builds it locally)
+- [ ] (person) Rules page on GitHub Pages: Settings > Pages > Source "GitHub Actions" (`python3 .cartographer/bin/rules_page.py` builds it locally)
 - [ ] (person) Required checks: Fence, Hidden tests, guardrails, and the repository's own CI; code owner review on
