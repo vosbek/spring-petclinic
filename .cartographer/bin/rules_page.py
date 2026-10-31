@@ -214,9 +214,17 @@ NOTE_NO_RULES = ('<div class="cds--inline-notification cds--inline-notification-
                  '</div></div></div>')
 
 
+NOTE_ISSUES_OFF = ('<div class="cds--inline-notification cds--inline-notification--low-contrast cds--inline-notification--warning sf-note" role="status">'
+                   f'<div class="cds--inline-notification__details">{INFO}<div class="cds--inline-notification__text-wrapper">'
+                   '<div class="cds--inline-notification__title">GitHub Issues are turned off for this repository.</div>'
+                   '<div class="cds--inline-notification__subtitle">Accept and Reject open a decision as an issue, so they cannot work until a person turns Issues on in '
+                   '<a class="cds--link" href="{settings}">Settings</a> under General, Features. Forks start with Issues off.</div>'
+                   '</div></div></div>')
+
+
 # ----------------------------------------------------------------------------- the page
 
-def build(repo, fence_report=None, waiting=None, repo_url=None):
+def build(repo, fence_report=None, waiting=None, repo_url=None, issues_off=False):
     home = os.path.join(repo, ".cartographer")
     accepted = load(os.path.join(home, "guardrails.json"), {"rules": [], "exceptions": []})
     proposed = load(os.path.join(home, "guardrails.proposed.json"), {"rules": []})
@@ -318,13 +326,17 @@ def build(repo, fence_report=None, waiting=None, repo_url=None):
 
     # Waiting on a person
     O.append('<section id="waiting" class="sf-panel" role="tabpanel">')
+    if props and repo_url and issues_off:
+        O.append(NOTE_ISSUES_OFF.replace("{settings}", e(repo_url.rstrip("/") + "/settings")))
     if props and not rules:
         O.append(NOTE_NO_RULES)
     rows = []
     for r in props:
         sev = severity(r)
         enf = "A note on the pull request" if sev == "info" else enforced_label(r)
-        if repo_url:
+        if repo_url and issues_off:
+            decide = '<span class="sf-muted">Turn on Issues to decide here</span>'
+        elif repo_url:
             decide = (f'<div class="sf-actions"><a class="cds--btn cds--btn--sm cds--layout--size-sm cds--btn--primary" href="{e(decision_url(repo_url, r["id"], "Accept"))}">Accept</a>'
                       f'<a class="cds--btn cds--btn--sm cds--layout--size-sm cds--btn--ghost" href="{e(decision_url(repo_url, r["id"], "Reject"))}">Reject</a></div>')
         else:
@@ -490,12 +502,13 @@ def main():
     ap.add_argument("--fence-report")
     ap.add_argument("--waiting", help="JSON list of pull requests labelled for a person")
     ap.add_argument("--repo-url")
+    ap.add_argument("--issues-off", action="store_true", help="GitHub Issues are disabled: show why Accept and Reject cannot work")
     a = ap.parse_args()
     repo = os.path.abspath(a.repo)
     out = a.out or os.path.join(repo, ".cartographer", "dist", "rules", "index.html")
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     with open(out, "w") as f:
-        f.write(build(repo, a.fence_report, a.waiting, a.repo_url))
+        f.write(build(repo, a.fence_report, a.waiting, a.repo_url, a.issues_off))
     print(f"wrote {out}")
     return 0
 

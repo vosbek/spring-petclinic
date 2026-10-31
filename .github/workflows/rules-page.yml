@@ -45,6 +45,12 @@ jobs:
         run: |
           type=$(gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null || true)
           echo "enabled=$([ "$type" = workflow ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Are GitHub Issues on? (Accept and Reject open an issue)
+        id: issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: echo "on=$(gh api "repos/$REPO" --jq .has_issues 2>/dev/null || echo true)" >> "$GITHUB_OUTPUT"
       - name: Pull requests labelled for a person
         env:
           GH_TOKEN: ${{ github.token }}
@@ -56,8 +62,10 @@ jobs:
       - name: Build the page
         env:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          ISSUES_ON: ${{ steps.issues.outputs.on }}
         run: |
-          python3 .cartographer/bin/rules_page.py --out _site/index.html --waiting .cache/waiting.json --repo-url "$REPO_URL"
+          flags=(); [ "$ISSUES_ON" = "false" ] && flags+=(--issues-off)
+          python3 .cartographer/bin/rules_page.py --out _site/index.html --waiting .cache/waiting.json --repo-url "$REPO_URL" "${flags[@]}"
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import re
           page = open("_site/index.html").read()

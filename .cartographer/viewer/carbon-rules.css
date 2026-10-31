@@ -1720,6 +1720,25 @@ because the nesting selector cannot represent pseudo-elements. */
   border-color: var(--cds-support-info, #0043ce);
 }
 
+.cds--inline-notification--warning {
+  background: var(--cds-background-inverse, #393939);
+  border-inline-start: 3px solid var(--cds-support-warning-inverse, #f1c21b);
+}
+.cds--inline-notification--warning .cds--inline-notification__icon {
+  fill: var(--cds-support-warning-inverse, #f1c21b);
+}
+
+.cds--inline-notification--low-contrast.cds--inline-notification--warning {
+  background: var(--cds-notification-background-warning, #fcf4d6);
+  border-inline-start: 3px solid var(--cds-support-warning, #f1c21b);
+}
+.cds--inline-notification--low-contrast.cds--inline-notification--warning .cds--inline-notification__icon {
+  fill: var(--cds-support-warning, #f1c21b);
+}
+.cds--inline-notification--low-contrast.cds--inline-notification--warning::before {
+  border-color: var(--cds-support-warning, #f1c21b);
+}
+
 .cds--inline-notification__details {
   display: flex;
   flex-grow: 1;
