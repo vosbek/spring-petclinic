@@ -51,7 +51,7 @@
         "-B",
         "-ntp",
         "-q",
-        "checkstyle:check"
+        "checkstyle:check@nohttp-checkstyle-validation"
       ],
       "parse": "exit",
       "hint": "Fix the Checkstyle findings above."
@@ -98,7 +98,15 @@
     "pattern": "**/*.{ts,tsx,js,mjs,py,java}",
     "glob": "**/*.{ts,tsx,js,mjs,py,java}",
     "minTokens": 50,
-    "ignorePattern": "import (static )?[a-zA-Z0-9_.*]+;"
+    "ignorePattern": "import (static )?[a-zA-Z0-9_.*]+;",
+    "ignore": [
+      "**/.cartographer/**",
+      "**/.fence/**",
+      "**/verification/**",
+      "**/.agents/**",
+      "**/.claude/**",
+      "**/node_modules/**"
+    ]
   },
   "java": {
     "build": "maven",

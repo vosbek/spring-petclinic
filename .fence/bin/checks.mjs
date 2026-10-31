@@ -333,7 +333,7 @@ export function duplicates(ctx) {
   const out = path.join(OUT_DIR, "jscpd");
   const pairsOf = (paths, cwd) => {
     // ignorePattern: code that repeats by necessity, such as a Java file's import list.
-    const ignore = d.ignorePattern ? ["--ignore-pattern", d.ignorePattern] : [];
+    const ignore = [...(d.ignorePattern ? ["--ignore-pattern", d.ignorePattern] : []), ...(d.ignore?.length ? ["--ignore", d.ignore.join(",")] : [])];
     run(["npx", "--yes", "jscpd@4.0.5", ...paths, "--pattern", d.pattern ?? "**/*", "--min-tokens", String(d.minTokens ?? 50), ...ignore, "--silent", "--reporters", "json", "--output", out], { cwd });
     return clonePairs(readJson(path.join(out, "jscpd-report.json"), { duplicates: [] }).duplicates);
   };

@@ -64,8 +64,10 @@ jobs:
           git config user.name "fence-gardener"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- . ':(exclude).cache'
-          git commit -m "Gardener: $fixed" -m "Fixers run by the fence gardener. Every fence check ran again after them."
-          git push origin "HEAD:$HEAD_REF"
+          git commit -q -m "Gardener: $fixed" -m "Fixers run by the fence gardener. Every fence check ran again after them." 2>"$RUNNER_TEMP/git.err" \
+            || { while read -r l; do echo "::error title=Gardener could not commit::$l"; done < "$RUNNER_TEMP/git.err"; exit 1; }
+          git push -q origin "HEAD:$HEAD_REF" 2>"$RUNNER_TEMP/git.err" \
+            || { while read -r l; do echo "::error title=Gardener could not push::$l"; done < "$RUNNER_TEMP/git.err"; exit 1; }
       - name: Label
         if: always()
         env:
