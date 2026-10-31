@@ -36,7 +36,8 @@
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
         <input type="hidden" name="petId" th:value="${pet.id}" />
-        <button class="btn btn-primary" type="submit" th:text="#{addVisit}">Add Visit</button>
+        <button th:if="${visit['new']}" class="btn btn-primary" type="submit" th:text="#{addVisit}">Add Visit</button>
+        <button th:unless="${visit['new']}" class="btn btn-primary" type="submit" th:text="#{updateVisit}">Update Visit</button>
       </div>
     </div>
   </form>

@@ -72,9 +72,10 @@
         "src/main/java/org/springframework/samples/petclinic/owner/PetController.java",
         "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java",
         "src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java",
-        "src/main/java/org/springframework/samples/petclinic/owner/PetTypeFormatter.java"
+        "src/main/java/org/springframework/samples/petclinic/owner/PetTypeFormatter.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java"
       ],
-      "summary": "MVC controllers for finding/editing owners, adding pets and booking visits. Each handler re-loads the Owner through @ModelAttribute methods instead of using session state.",
+      "summary": "MVC controllers for finding/editing owners, adding pets and booking visits. Each handler re-loads the Owner through @ModelAttribute methods instead of using session state. VisitChangeController changes and cancels upcoming visits.",
       "responsibilities": [
         "Owner search with 5-per-page pagination",
         "Pet and visit forms with server-side validation",
@@ -551,6 +552,51 @@
           }
         }
       ]
+    },
+    {
+      "id": "change-or-cancel-visit",
+      "name": "Change or cancel an upcoming visit",
+      "trigger": "POST /owners/{ownerId}/pets/{petId}/visits/{visitId}/edit or /cancel",
+      "summary": "The owner is loaded, the pet and visit are looked up within that owner (404 otherwise), a past visit is refused (400), and the whole Owner aggregate is saved; a cancelled visit is deleted by orphan removal.",
+      "steps": [
+        {
+          "component": "owner-web",
+          "action": "findUpcomingVisit: the visit must belong to this owner's pet (404) and be upcoming (400)",
+          "evidence": {
+            "path": "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java",
+            "line": 120
+          }
+        },
+        {
+          "component": "owner-domain",
+          "action": "Visit.isUpcoming: the date is after today",
+          "evidence": {
+            "path": "src/main/java/org/springframework/samples/petclinic/owner/Visit.java",
+            "line": 74
+          }
+        },
+        {
+          "component": "owner-web",
+          "action": "processEditVisitForm validates like booking, then copies date and description onto the stored visit",
+          "evidence": {
+            "path": "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java",
+            "line": 73
+          }
+        },
+        {
+          "component": "owner-domain",
+          "action": "Pet.removeVisit drops the visit; orphanRemoval deletes the row on save",
+          "evidence": {
+            "path": "src/main/java/org/springframework/samples/petclinic/owner/Pet.java",
+            "line": 104
+          }
+        },
+        {
+          "component": "owner-domain",
+          "action": "OwnerRepository.save cascades to pets and visits",
+          "snippet": "owner-aggregate"
+        }
+      ]
     }
   ],
   "snippets": [
@@ -695,6 +741,20 @@
         {
           "path": "src/main/java/org/springframework/samples/petclinic/owner/Owner.java",
           "line": 67
+        }
+      ]
+    },
+    {
+      "id": "only-upcoming-visits-change",
+      "title": "Only upcoming visits can be changed or cancelled",
+      "status": "documented",
+      "context": "Visits are the pet's medical history; booking already requires a date after today.",
+      "decision": "Edit and cancel are refused with 400 for a visit dated today or earlier, and with 404 for a visit that is not this owner's pet's.",
+      "consequences": "The owner page shows Edit and Cancel only for upcoming visits.",
+      "evidence": [
+        {
+          "path": "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java",
+          "line": 125
         }
       ]
     }
