@@ -1,0 +1,88 @@
+# Rule decisions: a person presses Accept or Reject on the rules page, which opens a "Rule decision" issue
+# (.github/ISSUE_TEMPLATE/rule-decision.yml) with the rule, the decision and why. This workflow checks the person
+# has write access, applies the decision to .cartographer/guardrails*.json with guard.py, and opens a pull request
+# that closes the issue. CODEOWNERS sends it to the rules' owner; merging it is what makes the decision take effect.
+# The issue text is read from the event file, never pasted into a script, and only a proposed rule's id is used.
+# Set GARDENER_TOKEN so the fence runs on the pull request (pull requests opened with the default token start no workflows).
+name: Rule decision
+on:
+  issues:
+    types: [opened, edited, labeled]
+permissions:
+  contents: read
+concurrency:
+  group: rule-decision-${{ github.event.issue.number }}
+  cancel-in-progress: false
+jobs:
+  decide:
+    # The form adds the "rule decision" label once it exists (the first run creates it); until then, the title marks it.
+    if: >-
+      contains(github.event.issue.labels.*.name, 'rule decision') ||
+      startsWith(github.event.issue.title, 'Accept guard rule ') || startsWith(github.event.issue.title, 'Reject guard rule ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GARDENER_TOKEN || github.token }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Label it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          gh label create "rule decision" --repo "$REPO" --color 0F62FE --description "Accept or reject a proposed guard rule" 2>/dev/null || true
+          gh api "repos/$REPO/issues/$ISSUE/labels" -f "labels[]=rule decision" > /dev/null
+      - name: Read the decision
+        id: read
+        run: python3 .cartographer/bin/rule_decision.py read "$GITHUB_EVENT_PATH" >> "$GITHUB_OUTPUT"
+      - name: Check the person may decide
+        id: who
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE: ${{ github.event.issue.number }}
+          PROBLEM: ${{ steps.read.outputs.problem }}
+        run: |
+          if [ -n "$PROBLEM" ]; then
+            gh issue comment "$ISSUE" --repo "$REPO" --body "Nothing changed: $PROBLEM"
+            exit 1
+          fi
+          level=$(gh api "repos/$REPO/collaborators/$AUTHOR/permission" --jq .permission 2>/dev/null || echo none)
+          case "$level" in admin|maintain|write) ;; *)
+            gh issue comment "$ISSUE" --repo "$REPO" --body "Nothing changed: rule decisions need write access to this repository, and @$AUTHOR has \`$level\`."
+            exit 1;;
+          esac
+      - name: Apply it and open a pull request
+        env:
+          GH_TOKEN: ${{ secrets.GARDENER_TOKEN || github.token }}
+          REPO: ${{ github.repository }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE: ${{ github.event.issue.number }}
+          RULE: ${{ steps.read.outputs.rule }}
+          DECISION: ${{ steps.read.outputs.decision }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          branch="rule-decision/$ISSUE-$RULE"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            gh issue comment "$ISSUE" --repo "$REPO" --body "A pull request for this decision already exists (branch \`$branch\`)."
+            exit 0
+          fi
+          # The description first: it quotes the proposal and its replay, which guard.py removes from the proposals.
+          python3 .cartographer/bin/rule_decision.py body "$GITHUB_EVENT_PATH" > "$RUNNER_TEMP/body.md"
+          python3 .cartographer/bin/guard.py "--$DECISION" "$RULE"
+          git config user.name "rule-decision"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add .cartographer/guardrails.json .cartographer/guardrails.proposed.json
+          git commit -q -m "$(printf '%s guard rule %s' "${DECISION^}" "$RULE")" -m "Decided by @$AUTHOR in #$ISSUE."
+          git push -q origin "$branch"
+          url=$(gh pr create --repo "$REPO" --base "$BASE" --head "$branch" --title "$(printf '%s guard rule %s' "${DECISION^}" "$RULE")" --body-file "$RUNNER_TEMP/body.md")
+          gh issue comment "$ISSUE" --repo "$REPO" --body "Opened $url. Merging it applies the decision and closes this issue."

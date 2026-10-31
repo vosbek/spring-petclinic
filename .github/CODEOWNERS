@@ -5,6 +5,7 @@
 /.github/workflows/gardener.yml @vosbek
 /.github/workflows/hidden-tests.yml @vosbek
 /.github/workflows/rules-page.yml @vosbek
+/.github/workflows/rule-decision.yml @vosbek
 /.cartographer/guardrails.json @vosbek
 /.cartographer/baseline.json @vosbek
 /.cartographer/hooks/ @vosbek

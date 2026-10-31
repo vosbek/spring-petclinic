@@ -10,10 +10,14 @@ committed files, so it cannot drift from them.
 Reads: .cartographer/guardrails.json and guardrails.proposed.json (with each proposal's replay against history),
 .cartographer/config.json (checks a person does), .fence/fence.json, .fence/exceptions.json,
 .fence/dependencies.json, .github/CODEOWNERS and ONBOARDING.md. Optional: the fence's last report, and a JSON list
-of pull requests labelled for a person ([{number, title, url}], e.g. from `gh pr list --label ... --json`).
+of pull requests labelled for a person ([{number, title, url}]).
+
+With --repo-url, each proposed rule has Accept and Reject buttons. They open a "Rule decision" issue on GitHub
+(.github/ISSUE_TEMPLATE/rule-decision.yml); the rule-decision workflow turns it into a pull request for the rules'
+code owner. The page itself changes nothing.
 
 Deterministic: the page names the commit it was built from and no clock time, so the same commit gives the same
-page. Nothing here decides anything; decisions are made with the commands the page shows, through review.
+page. Styled with IBM Carbon (toolkit/viewer/carbon-rules.css, built by toolkit/viewer/carbon/build.sh).
 """
 from __future__ import annotations
 
@@ -24,12 +28,13 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Primer CSS 21.5.1 (GitHub's design system, MIT), cut to the components this page uses: toolkit/viewer/primer/.
-PRIMER = os.path.join(HERE, "..", "viewer", "primer-rules.css")
+# IBM Carbon (@carbon/styles 1.116.0, Apache-2.0), cut to the components this page uses.
+CARBON = os.path.join(HERE, "..", "viewer", "carbon-rules.css")
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, HERE)
 from guard import DEFAULT_SEVERITY, REPLAYABLE, enforced_label  # noqa: E402
 
 # The fence's built-in checks: id -> (category, what it requires). Titles as factory/fence/checks.mjs reports them.
@@ -49,11 +54,10 @@ BUILTIN_TOOL = {
     "duplicates": "jscpd",
     "dependencies": "package.json against .fence/dependencies.json",
     "map-coverage": "the codebase map (.cartographer/model)",
-    "guard": "guard.py with the accepted rules below",
+    "guard": "guard.py with the accepted rules",
     "formal": "formal.py: TLC on verification/",
     "exceptions": ".fence/exceptions.json",
 }
-SEVERITY = {"block": ("Blocks", "Label--danger"), "warn": ("Warns", "Label--attention"), "info": ("Note", "Label--secondary")}
 RULE_FILES = (".fence", ".cartographer/guardrails.json", ".cartographer/baseline.json", ".cartographer/hooks", ".github/workflows",
               "verification", ".github/CODEOWNERS", "laws")
 
@@ -79,11 +83,6 @@ def severity(rule):
     return rule.get("severity") or DEFAULT_SEVERITY.get(rule.get("type"), "block")
 
 
-def label(sev):
-    text, cls = SEVERITY.get(sev, (sev, "Label--secondary"))
-    return f'<span class="Label {cls}">{e(text)}</span>'
-
-
 def replay_text(rule):
     """The proposal's replay against history, in a sentence a reviewer can check against guard.py --replay."""
     rp = rule.get("_replay")
@@ -107,13 +106,25 @@ def replay_text(rule):
     return s + "."
 
 
+def history_short(rule):
+    rp = rule.get("_replay")
+    if not rp:
+        return "Not replayed yet"
+    if not rp.get("replayable") or rule.get("type") not in REPLAYABLE:
+        return "Applies from acceptance"
+    n, fired, bad = rp.get("commits", 0), rp.get("fired", 0), rp.get("followedByFixOrRevert", 0)
+    if fired == 0:
+        return f"Fired on 0 of {n} commits"
+    return f"Fired on {fired} of {n} commits; {bad} followed by a fix or revert"
+
+
 def onboarding_person_steps(repo):
     path = os.path.join(repo, "ONBOARDING.md")
     if not os.path.exists(path):
         return []
-    out = []
     with open(path) as f:
         lines = f.read().splitlines()
+    out = []
     for line in lines:
         m = re.match(r"\s*-\s*\[ \]\s*\(person\)\s*(.+)", line)
         if m:
@@ -125,9 +136,9 @@ def codeowners(repo):
     for p in (".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"):
         path = os.path.join(repo, p)
         if os.path.exists(path):
-            rows = []
             with open(path) as f:
                 lines = f.read().splitlines()
+            rows = []
             for line in lines:
                 line = line.strip()
                 if not line or line.startswith("#"):
@@ -143,23 +154,66 @@ def cmd_text(argv):
     return " ".join(a if re.fullmatch(r"[\w@%+=:,./{}-]+", a) else "'" + a.replace("'", "'\\''") + "'" for a in argv)
 
 
-def command_field(cmd, what):
-    """A read-only command with a copy button: Primer's input group."""
-    return (f'<div class="input-group mt-1"><input class="form-control input-sm input-monospace" type="text" readonly '
-            f'value="{e(cmd)}" aria-label="{e(what)}"><span class="input-group-button">'
-            f'<button class="btn btn-sm" type="button" data-copy="{e(cmd)}">Copy</button></span></div>')
+def inline_md(s):
+    """`code` spans in a line of ONBOARDING.md, escaped."""
+    parts = s.split("`")
+    return "".join(f"<code>{e(p)}</code>" if i % 2 else e(p) for i, p in enumerate(parts))
 
 
-def box(title, count, rows, header_note=""):
-    c = f' <span class="Counter">{count}</span>' if count is not None else ""
-    note = f'<div class="f6 color-fg-muted mt-1">{header_note}</div>' if header_note else ""
-    return (f'<div class="Box mb-4"><div class="Box-header"><h3 class="Box-title">{title}{c}</h3>{note}</div>'
-            + "".join(f'<div class="Box-row">{r}</div>' for r in rows) + "</div>")
+def decision_url(repo_url, rule_id, decision):
+    q = urllib.parse.urlencode({"template": "rule-decision.yml", "labels": "rule decision", "title": f"{decision} guard rule {rule_id}",
+                                "rule": rule_id, "decision": decision})
+    return f"{repo_url.rstrip('/')}/issues/new?{q}"
 
 
-def blankslate(title, text):
-    return f'<div class="blankslate blankslate-narrow Box mb-4"><h3 class="blankslate-heading">{title}</h3><p>{text}</p></div>'
+# ----------------------------------------------------------------------------- Carbon pieces
 
+CHEVRON = ('<svg class="cds--table-expand__svg" focusable="false" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16">'
+           '<path d="M11 8L6 13 5.3 12.3 9.6 8 5.3 3.7 6 3z"></path></svg>')
+INFO = ('<svg class="cds--inline-notification__icon" focusable="false" aria-hidden="true" width="20" height="20" viewBox="0 0 32 32">'
+        '<path d="M16,2A14,14,0,1,0,30,16,14,14,0,0,0,16,2Zm0,6a1.5,1.5,0,1,1-1.5,1.5A1.5,1.5,0,0,1,16,8Zm4,16.125H12v-2.25h2.875v-5.75H13v-2.25h4.125v8H20Z"></path></svg>')
+
+
+def tag(text, color):
+    return f'<span class="cds--tag cds--tag--{color}"><span class="cds--tag__label">{e(text)}</span></span>'
+
+
+def sev_tag(sev):
+    text, color = {"block": ("Blocks", "red"), "warn": ("Warns", "warm-gray"), "info": ("Note", "outline")}.get(sev, (sev, "outline"))
+    return tag(text, color)
+
+
+def table(key, title, desc, head, rows, empty=None, expandable=False):
+    """A Carbon data table. rows: lists of cells, or (cells, detail_html) pairs when expandable."""
+    th = ('<th class="cds--table-expand" scope="col"><span class="sf-sr">Details</span></th>' if expandable else "") + "".join(
+        f'<th scope="col"><div class="cds--table-header-label">{h}</div></th>' for h in head)
+    body = []
+    if not rows and empty:
+        body.append(f'<tr><td colspan="{len(head) + expandable}"><div class="sf-empty"><p class="sf-empty__title">{empty[0]}</p><p>{empty[1]}</p></div></td></tr>')
+    for i, row in enumerate(rows):
+        if expandable:
+            cells, detail = row
+            rid = f"{key}-{i}"
+            body.append(f'<tr class="cds--parent-row" data-parent-row><td class="cds--table-expand"><button type="button" class="cds--table-expand__button" '
+                        f'aria-expanded="false" aria-controls="{rid}" aria-label="Show details">{CHEVRON}</button></td>'
+                        + "".join(f"<td>{c}</td>" for c in cells) + "</tr>")
+            body.append(f'<tr data-child-row id="{rid}" hidden><td colspan="{len(head) + 1}"><div class="cds--child-row-inner-container">{detail}</div></td></tr>')
+        else:
+            body.append("<tr>" + "".join(f"<td>{c}</td>" for c in row) + "</tr>")
+    return (f'<div class="cds--data-table-container sf-table"><div class="cds--data-table-header"><h2 class="cds--data-table-header__title">{title}</h2>'
+            + (f'<p class="cds--data-table-header__description">{desc}</p>' if desc else "")
+            + '</div><div class="cds--data-table-content"><table class="cds--data-table cds--data-table--lg">'
+            + f'<thead><tr>{th}</tr></thead><tbody>{"".join(body)}</tbody></table></div></div>')
+
+
+NOTE_NO_RULES = ('<div class="cds--inline-notification cds--inline-notification--low-contrast cds--inline-notification--info sf-note" role="status">'
+                 f'<div class="cds--inline-notification__details">{INFO}<div class="cds--inline-notification__text-wrapper">'
+                 '<div class="cds--inline-notification__title">No guard rule is in force yet.</div>'
+                 '<div class="cds--inline-notification__subtitle">The fence\'s guard check has nothing to enforce until a person accepts one of the proposals below.</div>'
+                 '</div></div></div>')
+
+
+# ----------------------------------------------------------------------------- the page
 
 def build(repo, fence_report=None, waiting=None, repo_url=None):
     home = os.path.join(repo, ".cartographer")
@@ -172,9 +226,7 @@ def build(repo, fence_report=None, waiting=None, repo_url=None):
     report = load(fence_report, None) if fence_report else None
     prs = load(waiting, []) if waiting else []
 
-    owner_repo = ""
-    if repo_url:
-        owner_repo = "/".join(repo_url.rstrip("/").split("/")[-2:])
+    owner_repo = "/".join(repo_url.rstrip("/").split("/")[-2:]) if repo_url else ""
     name = owner_repo.split("/")[-1] if owner_repo else os.path.basename(os.path.abspath(repo))
     sha = git(repo, "rev-parse", "HEAD")
     day = git(repo, "log", "-1", "--format=%cs")
@@ -196,6 +248,7 @@ def build(repo, fence_report=None, waiting=None, repo_url=None):
     for x in exceptions:
         x["expired"] = bool(day and x["expires"] and x["expires"] < day)
         x["incomplete"] = not (x["reason"] and x["by"] and x["expires"])
+    bad_exc = [x for x in exceptions if x["expired"] or x["incomplete"]]
 
     # Fence checks: built-ins, then the repository's own tools.
     checks = []
@@ -225,189 +278,202 @@ def build(repo, fence_report=None, waiting=None, repo_url=None):
         if c["id"] in BUILTINS and not c["hint"]:
             c["hint"] = not_here(c["id"])
     guard_fixers = sorted(k.split(":", 1)[1] for k in (fence or {}).get("fixers", {}) if k.startswith("guard:"))
-    bad_exc = [x for x in exceptions if x["expired"] or x["incomplete"]]
     waiting_n = len(props) + len(person_steps) + len(prs) + len(bad_exc)
 
-    # ---- the page
     O = []
-    where = f'<a class="Link--muted" href="{e(repo_url)}">{e(owner_repo)}</a>' if repo_url else e(name)
-    O.append(f"""<div class="container-lg px-3 pt-4">
-<div class="f4 color-fg-muted mb-1">{where}</div>
-<div class="Subhead mb-0 border-bottom-0">
-  <h1 class="Subhead-heading f2">Rules and approvals</h1>
-  <div class="Subhead-description">Built from commit <code>{e(sha[:12])}</code>{f" on <code>{e(branch)}</code>" if branch and branch != "HEAD" else ""}{f", {e(day)}" if day else ""}. Every line comes from a file in the repository, listed at the end. This page shows the rules; it decides nothing.</div>
-</div>
-</div>""")
-    tabs = [("waiting", "Waiting on a person", waiting_n), ("guard", "Guard rules", len(rules)),
-            ("fence", "Fence checks", len(checks) if listed else None), ("exceptions", "Exceptions", len(exceptions)),
-            ("owners", "Owners", len(owners))]
+    crumb = (f'<li class="cds--breadcrumb-item"><a class="cds--link" href="{e(repo_url)}">{e(owner_repo)}</a></li>' if repo_url
+             else f'<li class="cds--breadcrumb-item"><span>{e(name)}</span></li>')
+    meta = (f"Built from commit <code>{e(sha[:12])}</code>" + (f" on <code>{e(branch)}</code>" if branch and branch != "HEAD" else "")
+            + (f", {e(day)}" if day else "") + ". Every line comes from a file in the repository, listed at the end. "
+            "Decisions go through a pull request a code owner reviews; this page changes nothing by itself.")
+    O.append(f'<header class="cds--header" aria-label="Software factory"><a class="cds--header__name" href="{e(repo_url or "#")}">'
+             '<span class="cds--header__name--prefix">Software factory</span>&nbsp;[Rules]</a></header>')
+    O.append('<main class="sf-main"><div class="sf-pagehead">'
+             f'<nav aria-label="Breadcrumb"><ol class="cds--breadcrumb cds--breadcrumb--no-trailing-slash">{crumb}<li class="cds--breadcrumb-item"><span>Rules</span></li></ol></nav>'
+             f'<h1 class="sf-title">Rules and approvals</h1><p class="sf-meta">{meta}</p></div>')
+
+    tabs = [("waiting", "Waiting on a person", f"{waiting_n} item{'s' if waiting_n != 1 else ''}"),
+            ("guard", "Guard rules", f"{len(rules)} in force"),
+            ("fence", "Fence checks", f"{len(checks)} checks" if listed else "not listed"),
+            ("exceptions", "Exceptions", f"{len(exceptions)}"),
+            ("owners", "Owners", f"{len(owners)} path{'s' if len(owners) != 1 else ''}")]
     if config.get("judgment"):
-        tabs.insert(4, ("judgment", "Checked by a person", len(config["judgment"])))
-    O.append('<div class="border-bottom mt-3"><nav class="UnderlineNav container-lg px-3 border-bottom-0" aria-label="Sections"><div class="UnderlineNav-body">'
-             + "".join(f'<a class="UnderlineNav-item" href="#{t}" data-tab="{t}">{e(label_)}'
-                       + (f' <span class="Counter">{n}</span>' if n is not None else "") + "</a>" for t, label_, n in tabs)
-             + "</div></nav></div>")
-    O.append('<main class="container-lg px-3 py-4">')
+        tabs.insert(4, ("judgment", "Checked by a person", f"{len(config['judgment'])} rules"))
+    O.append('<div class="cds--tabs cds--tabs--contained sf-tabs"><div class="cds--tab--list" role="tablist">'
+             + "".join(f'<a role="tab" class="cds--tabs__nav-item cds--tabs__nav-link" href="#{t}" data-tab="{t}">'
+                       f'<div class="cds--tabs__nav-item-label-wrapper"><span class="cds--tabs__nav-item-label">{e(lab)}</span></div>'
+                       f'<div class="cds--tabs__nav-item-secondary-label">{e(sec)}</div></a>' for t, lab, sec in tabs)
+             + '</div></div><div class="sf-panels">')
 
     # Waiting on a person
-    O.append('<section id="waiting" class="tab-panel">')
-    if not waiting_n:
-        O.append(blankslate("Nothing is waiting on a person", "Every proposed rule has been decided and every exception is current."))
+    O.append('<section id="waiting" class="sf-panel" role="tabpanel">')
     if props and not rules:
-        O.append('<div class="flash mb-3">No guard rule is in force yet, so the fence\'s <code>guard</code> check has nothing to enforce. '
-                 'A rule applies only after a person accepts it.</div>')
+        O.append(NOTE_NO_RULES)
+    rows = []
+    for r in props:
+        sev = severity(r)
+        enf = "A note on the pull request" if sev == "info" else enforced_label(r)
+        if repo_url:
+            decide = (f'<div class="sf-actions"><a class="cds--btn cds--btn--sm cds--layout--size-sm cds--btn--primary" href="{e(decision_url(repo_url, r["id"], "Accept"))}">Accept</a>'
+                      f'<a class="cds--btn cds--btn--sm cds--layout--size-sm cds--btn--ghost" href="{e(decision_url(repo_url, r["id"], "Reject"))}">Reject</a></div>')
+        else:
+            decide = '<span class="sf-muted">Decided on GitHub; build with --repo-url for the buttons</span>'
+        detail = (f'<dl class="sf-detail"><dt>Why proposed</dt><dd>{e(r.get("_why") or r.get("source") or "not recorded")}</dd>'
+                  f'<dt>Evidence from history</dt><dd>{replay_text(r)}</dd><dt>Once accepted, enforced by</dt><dd>{e(enf)}</dd></dl>')
+        rows.append(([f'<span class="sf-id">{e(r["id"])}</span>', sev_tag(sev), e(r.get("description") or r.get("type")), e(history_short(r)), decide], detail))
     if props:
-        rows = []
-        for r in props:
-            sev = severity(r)
-            enf = "A note on the pull request" if sev == "info" else enforced_label(r)
-            typ = f' <span class="color-fg-muted f6">{e(r.get("type"))}</span>' if r.get("type") and r.get("type") != r["id"] else ""
-            rows.append(f"""<div id="rule-{e(r["id"])}"><div class="d-flex flex-wrap flex-items-center gap-2"><strong class="text-mono">{e(r["id"])}</strong> {label(sev)}{typ}</div>
-<p class="mt-1 mb-1">{e(r.get("description") or r.get("type"))}</p>
-<p class="f6 color-fg-muted mb-1">{replay_text(r)}</p>
-<details class="details-reset mt-2"><summary class="btn-link f6">Why it was proposed, and how to decide</summary>
-<div class="mt-2 f6"><p class="mb-1"><span class="color-fg-muted">Why proposed:</span> {e(r.get("_why") or r.get("source") or "not recorded")}</p>
-<p class="mb-2"><span class="color-fg-muted">Once accepted, enforced by:</span> {e(enf)}</p>
-<label class="d-block color-fg-muted">Accept</label>{command_field(f"python3 .cartographer/bin/guard.py --accept {r['id']}", "Accept command")}
-<label class="d-block color-fg-muted mt-2">Reject</label>{command_field(f"python3 .cartographer/bin/guard.py --reject {r['id']}", "Reject command")}
-</div></details></div>""")
-        O.append(box("Proposed guard rules", len(props), rows,
-                     "Proposed by an agent or <code>guard.py --suggest</code> and replayed against the repository's history. Accepting moves a rule into "
-                     "<code>.cartographer/guardrails.json</code>, which CODEOWNERS routes to its owner for review."))
+        O.append(table("proposed", "Proposed guard rules",
+                       "Proposed by an agent or <code>guard.py --suggest</code> and replayed against the repository's history. Accept or Reject opens a decision "
+                       "on GitHub with a box for why; a workflow turns it into a pull request for the rules' code owner.",
+                       ["Rule", "Severity", "What it requires", "Evidence from history", "Decision"], rows, expandable=True))
     if prs:
-        O.append(box("Pull requests labelled for a person", len(prs),
-                     [f'<a class="Link--primary text-bold" href="{e(p.get("url", ""))}">#{e(p.get("number", ""))}</a> {e(p.get("title", ""))}' for p in prs],
-                     "The fence failed and the gardener could not fix it. <code>/tend-fence</code> lays out the options for each finding."))
+        O.append(table("prs", "Pull requests labelled for a person", "The fence failed and the gardener could not fix it. <code>/tend-fence</code> lays out the options for each finding.",
+                       ["Pull request", "Title"], [[f'<a class="cds--link" href="{e(p.get("url", ""))}">#{e(p.get("number", ""))}</a>', e(p.get("title", ""))] for p in prs]))
     if bad_exc:
-        O.append(box("Exceptions to renew or remove", len(bad_exc),
-                     [f'{x["what"]} on <code>{e(x["where"])}</code> <span class="color-fg-muted">{"expired " + e(x["expires"]) if x["expired"] else "missing a reason, an approver or an expiry"}</span>' for x in bad_exc]))
+        O.append(table("renew", "Exceptions to renew or remove", None, ["Exception", "Where", "Problem"],
+                       [[x["what"], f"<code>{e(x['where'])}</code>", "expired " + e(x["expires"]) if x["expired"] else "missing a reason, an approver or an expiry"] for x in bad_exc]))
     if person_steps:
-        O.append(box("Setup only a person can do", len(person_steps), [inline_md(s) for s in person_steps],
-                     "Unticked person steps in <code>ONBOARDING.md</code>. Until they are done, some checks do not bind."))
+        O.append(table("setup", "Setup only a person can do", "Unticked person steps in <code>ONBOARDING.md</code>. Until they are done, some checks do not bind.",
+                       ["Step"], [[inline_md(st)] for st in person_steps]))
+    if not waiting_n:
+        O.append(table("none", "Waiting on a person", None, ["Item"], [], empty=("Nothing is waiting on a person", "Every proposed rule has been decided and every exception is current.")))
     O.append("</section>")
 
     # Guard rules in force
-    O.append('<section id="guard" class="tab-panel">')
-    if not rules:
-        O.append(blankslate("No guard rules in force",
-                            f"{len(props)} proposed rule{'s' if len(props) != 1 else ''} wait on a person. Rules live in <code>.cartographer/guardrails.json</code> and are checked by <code>guard.py</code>: the same change always gets the same verdict."))
-    else:
-        rows = []
-        for r in rules:
-            sev = severity(r)
-            enf = "PR comment" if sev == "info" else enforced_label(r)
-            fix = r.get("fix", "") + (" The gardener can fix this." if r["id"] in guard_fixers else "")
-            ev = ", ".join(r.get("evidence", [])[:3]) or r.get("source", "")
-            rows.append(f"""<div class="d-flex flex-wrap flex-items-center gap-2"><strong class="text-mono">{e(r["id"])}</strong> {label(sev)} <span class="f6 color-fg-muted">{e(enf)}</span></div>
-<p class="mt-1 mb-1">{e(r.get("description") or r.get("type"))}</p>
-{f'<p class="f6 mb-1"><span class="color-fg-muted">On failure:</span> {e(fix.strip())}</p>' if fix.strip() else ""}
-{f'<p class="f6 color-fg-muted mb-0">Evidence: {e(ev)}</p>' if ev else ""}""")
-        O.append(box("Guard rules in force", len(rules), rows,
-                     "From <code>.cartographer/guardrails.json</code>, checked by <code>guard.py</code>. No model decides pass or fail."))
+    rows = []
+    for r in rules:
+        sev = severity(r)
+        fix = (r.get("fix", "") + (" The gardener can fix this." if r["id"] in guard_fixers else "")).strip()
+        rows.append([f'<span class="sf-id">{e(r["id"])}</span>', sev_tag(sev),
+                     e(r.get("description") or r.get("type")) + (f'<div class="sf-sub">On failure: {e(fix)}</div>' if fix else ""),
+                     e("PR comment" if sev == "info" else enforced_label(r)), e(", ".join(r.get("evidence", [])[:3]) or r.get("source", ""))])
+    O.append('<section id="guard" class="sf-panel" role="tabpanel">')
+    O.append(table("rules", "Guard rules in force",
+                   "From <code>.cartographer/guardrails.json</code>, checked by <code>guard.py</code>: the same change always gets the same verdict. No model decides pass or fail.",
+                   ["Rule", "Severity", "What it requires", "Enforced by", "Evidence"], rows,
+                   empty=("No guard rules in force", f"{len(props)} proposed rule{'s' if len(props) != 1 else ''} wait on a person under Waiting on a person.")))
     O.append("</section>")
 
     # Fence checks
-    O.append('<section id="fence" class="tab-panel">')
+    O.append('<section id="fence" class="sf-panel" role="tabpanel">')
     if not fence:
-        O.append(blankslate("Not onboarded to the fence", "There is no <code>.fence/fence.json</code> in this repository."))
+        O.append(table("fence", "Fence checks", None, ["Check"], [], empty=("Not onboarded to the fence", "There is no <code>.fence/fence.json</code> in this repository.")))
     elif not listed:
-        O.append(blankslate("The checks are not listed", "<code>.fence/fence.json</code> does not list the checks: this repository's fence defines them in its own code, so this page cannot show them. Onboarding with the factory template writes the list."))
+        O.append(table("fence", "Fence checks", None, ["Check"], [], empty=(
+            "The checks are not listed", "<code>.fence/fence.json</code> does not list the checks: this repository's fence defines them in its own code, "
+            "so this page cannot show them. Onboarding with the factory template writes the list.")))
     else:
         rows = []
         for c in checks:
-            res = results.get(c["id"]) if report else None
-            state = (f' <span class="Label {"Label--danger" if res["status"] == "fail" else "Label--success" if res["status"] == "pass" else "Label--secondary"}">{e(res["status"])}</span>' if res else "")
-            fixer = '<span class="Label Label--success">Gardener fixes</span>' if c["fixer"] else ""
-            rows.append(f"""<div class="d-flex flex-justify-between flex-items-start gap-2"><div class="min-width-0">
-<div class="d-flex flex-wrap flex-items-center gap-2"><strong class="text-mono">{e(c["id"])}</strong> <span class="Label Label--secondary">{e(c["category"])}</span>{state}</div>
-<p class="mt-1 mb-1">{e(c["title"])}</p>
-<p class="f6 color-fg-muted mb-0 text-mono wb-break-word">{e(c["tool"])}</p>
-{f'<p class="f6 mt-1 mb-0">{e(c["hint"])}</p>' if c["hint"] else ""}
-</div><div class="flex-shrink-0">{fixer}</div></div>""")
-        O.append(box("Fence checks", len(checks), rows,
-                     "From <code>.fence/fence.json</code>. Where a check has a fixer, the gardener runs it, runs every check again, and commits only if nothing that passed now fails. Any other failure is labelled for a person."))
-        if report:
-            O.append(f'<p class="f6 color-fg-muted">Results: the fence report for commit <code>{e(str(report.get("head", ""))[:12])}</code> against <code>{e(report.get("base", ""))}</code>.</p>')
+            cells = [f'<span class="sf-id">{e(c["id"])}</span>', e(c["category"]), e(c["title"]) + (f'<div class="sf-sub">{e(c["hint"])}</div>' if c["hint"] else ""),
+                     f'<code class="sf-tool">{e(c["tool"])}</code>', tag("Gardener fixes", "green") if c["fixer"] else '<span class="sf-muted">A person decides</span>']
+            if report:
+                res = results.get(c["id"])
+                cells.append(tag(res["status"], "red" if res["status"] == "fail" else "green" if res["status"] == "pass" else "cool-gray") if res else "")
+            rows.append(cells)
+        O.append(table("fence", "Fence checks",
+                       "From <code>.fence/fence.json</code>. Where a check has a fixer, the gardener runs it, runs every check again, and commits only if nothing that "
+                       "passed now fails. Any other failure is labelled for a person.",
+                       ["Check", "Category", "What it requires", "Tool", "On failure"] + (["Last result"] if report else []), rows))
         if deps:
-            O.append(box("Approved dependencies", len(deps),
-                         [f'<strong class="text-mono">{e(k)}</strong> <span class="color-fg-muted">approved by {e(v.get("approvedBy", ""))}</span><div class="f6">{e(v.get("reason", ""))}</div>' for k, v in sorted(deps.items()) if isinstance(v, dict)]))
+            O.append(table("deps", "Approved dependencies", None, ["Package", "Reason", "Approved by"],
+                           [[f'<span class="sf-id">{e(k)}</span>', e(v.get("reason", "")), e(v.get("approvedBy", ""))] for k, v in sorted(deps.items()) if isinstance(v, dict)]))
     O.append("</section>")
 
     # Exceptions
-    O.append('<section id="exceptions" class="tab-panel">')
-    if not exceptions:
-        O.append(blankslate("No exceptions", "An exception needs a reason, a named approver and an expiry date, and the fence fails when one expires."))
-    else:
-        O.append(box("Exceptions", len(exceptions),
-                     [f'{x["what"]} on <code>{e(x["where"])}</code>' + (' <span class="Label Label--danger">expired</span>' if x["expired"] else "")
-                      + f'<div class="f6 mt-1">{e(x["reason"])}</div><div class="f6 color-fg-muted">Approved by {e(x["by"] or "nobody named")}, expires {e(x["expires"] or "never set")}</div>' for x in exceptions]))
+    O.append('<section id="exceptions" class="sf-panel" role="tabpanel">')
+    O.append(table("exceptions", "Exceptions", "An exception needs a reason, a named approver and an expiry date; the fence fails when one expires.",
+                   ["Exception", "Where", "Reason", "Approved by", "Expires"],
+                   [[x["what"], f"<code>{e(x['where'])}</code>", e(x["reason"]), e(x["by"]), e(x["expires"]) + (" " + tag("Expired", "red") if x["expired"] else "")]
+                    for x in exceptions],
+                   empty=("No exceptions", "Nothing in this repository is excused from a rule or a check.")))
     O.append("</section>")
 
     if config.get("judgment"):
-        O.append('<section id="judgment" class="tab-panel">')
-        O.append(box("Checked by a person", len(config["judgment"]),
-                     [e(j.get("text", "")) + (f'<div class="f6 color-fg-muted">{e(j["why"])}</div>' if j.get("why") else "") for j in config["judgment"]],
-                     "Rules no script can check, from <code>.cartographer/config.json</code>. A reviewer checks these on each pull request."))
+        O.append('<section id="judgment" class="sf-panel" role="tabpanel">')
+        O.append(table("judgment", "Checked by a person", "Rules no script can check, from <code>.cartographer/config.json</code>. A reviewer checks these on each pull request.",
+                       ["Rule", "Why a person checks it"], [[e(j.get("text", "")), e(j.get("why", ""))] for j in config["judgment"]]))
         O.append("</section>")
 
-    O.append('<section id="owners" class="tab-panel">')
-    if owners:
-        O.append(box("Who approves changes to the rules", len(owners),
-                     [f'<div class="d-flex flex-justify-between flex-wrap gap-2"><code>{e(p)}</code><span>{e(o)}</span></div>' for p, o in owners],
-                     f"From <code>{e(owners_file)}</code>. With code owner review required in the branch settings, GitHub will not merge a change to these paths without one of these people."))
-    else:
-        O.append(blankslate("No owners for the rule files", "Without CODEOWNERS entries, anyone with write access, an agent included, can change the rules in a pull request."))
-    O.append("</section>")
+    O.append('<section id="owners" class="sf-panel" role="tabpanel">')
+    O.append(table("owners", "Who approves changes to the rules",
+                   f"From <code>{e(owners_file or '.github/CODEOWNERS')}</code>. With code owner review required in the branch settings, GitHub will not merge "
+                   "a change to these paths without one of these people.",
+                   ["Path", "Owner"], [[f"<code>{e(p)}</code>", e(o)] for p, o in owners],
+                   empty=("No owners for the rule files", "Without CODEOWNERS entries, anyone with write access, an agent included, can change the rules in a pull request.")))
+    O.append("</section></div>")
 
     sources = [".cartographer/guardrails.json", ".cartographer/guardrails.proposed.json", ".cartographer/config.json", ".fence/fence.json",
                ".fence/exceptions.json", ".fence/dependencies.json", owners_file or ".github/CODEOWNERS", "ONBOARDING.md"]
-    present = [s for s in sources if s and os.path.exists(os.path.join(repo, s))]
+    present = [x for x in sources if x and os.path.exists(os.path.join(repo, x))]
     extra = ([f"the fence report {e(fence_report)}"] if report else []) + (["the list of pull requests labelled for a person"] if prs else [])
-    O.append(f'<footer class="border-top pt-3 mt-5 f6 color-fg-muted">Generated by <code>.cartographer/bin/rules_page.py</code> from '
-             f'{", ".join(f"<code>{e(s)}</code>" for s in present)}{"; " + "; ".join(extra) if extra else ""}. Styled with Primer CSS 21.5.1, GitHub\'s design system (MIT).</footer>')
-    O.append("</main>")
+    O.append('<footer class="sf-foot">Generated by <code>.cartographer/bin/rules_page.py</code> from '
+             + ", ".join(f"<code>{e(x)}</code>" for x in present) + ("; " + "; ".join(extra) if extra else "")
+             + ". Styled with IBM Carbon (@carbon/styles 1.116.0, Apache-2.0).</footer></main>")
     return page(f"{name} rules", "\n".join(O))
 
 
-def inline_md(s):
-    """`code` spans in a line of ONBOARDING.md, escaped."""
-    parts = s.split("`")
-    return "".join(f"<code>{e(p)}</code>" if i % 2 else e(p) for i, p in enumerate(parts))
-
-
-# Page-specific glue on top of Primer: tab panels, copy feedback, and the min-width fix for long commands.
+# Layout on top of Carbon: spacing, the page heading in Carbon's type scale, tab panels and expandable rows.
 CSS = """
-body{background:var(--bgColor-default,var(--color-canvas-default))}
-.tab-panel[hidden]{display:none!important}
-.UnderlineNav-item[aria-current]{font-weight:600}
-.Box-row p:last-child{margin-bottom:0}
-.input-group .form-control{min-width:0}
-.gap-2{gap:8px}
+body{margin:0}
+.sf-root{background:var(--cds-background);color:var(--cds-text-primary);min-height:100vh;font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif}
+.sf-main{max-width:84rem;margin:0 auto;padding-block:5rem 3rem;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (min-width:42rem){.sf-main{padding-left:max(2rem,env(safe-area-inset-left,0px));padding-right:max(2rem,env(safe-area-inset-right,0px))}}
+.sf-pagehead{margin-bottom:2rem}.sf-title{font-size:2rem;line-height:1.25;font-weight:400;margin:.75rem 0 .5rem}
+.sf-meta{font-size:.875rem;line-height:1.43;color:var(--cds-text-secondary);max-width:48rem;margin:0}
+.sf-root code{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:.8125rem}
+.sf-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sf-tabs{overflow-x:auto}.sf-tabs .cds--tab--list{display:flex}.sf-tabs .cds--tabs__nav-link{text-decoration:none;min-width:11rem}
+.sf-panels{background:var(--cds-layer-01);padding:1.5rem 0 .5rem}.sf-panel{padding:0 1rem}.sf-panel[hidden]{display:none!important}
+.sf-table{margin-bottom:2rem}.sf-table .cds--data-table-content{overflow-x:auto}.sf-table table{min-width:52rem}
+.sf-table .cds--data-table tbody td.cds--table-expand{vertical-align:top!important}
+.sf-table .cds--data-table td{vertical-align:top;padding-block:1rem}.sf-table .cds--data-table td.cds--table-expand{padding-block:.5rem}
+.sf-id{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;font-size:.875rem;font-weight:600;white-space:nowrap}
+.sf-sub{font-size:.75rem;line-height:1.33;color:var(--cds-text-secondary);margin-top:.25rem}.sf-muted{color:var(--cds-text-secondary);font-size:.875rem}
+.sf-tool{display:block;max-width:22rem;white-space:normal;word-break:break-word;color:var(--cds-text-secondary)}
+.sf-actions{display:flex;gap:.5rem;white-space:nowrap}.sf-actions .cds--btn{text-decoration:none}
+.sf-note{max-width:none;margin:0 0 1.5rem}
+.sf-detail{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.5rem 1.5rem;margin:0;font-size:.875rem;line-height:1.43;padding-block:.5rem}
+.sf-detail dt{color:var(--cds-text-secondary)}.sf-detail dd{margin:0}
+.cds--table-expand__svg{fill:var(--cds-icon-primary)}
+.sf-empty{padding:1.5rem 0}.sf-empty p{margin:0;font-size:.875rem;color:var(--cds-text-secondary)}
+.sf-empty .sf-empty__title{font-size:1.25rem;line-height:1.4;color:var(--cds-text-primary);margin-bottom:.5rem}
+.sf-foot{margin-top:2rem;font-size:.75rem;line-height:1.33;color:var(--cds-text-secondary)}
+@media (max-width:42rem){.sf-detail{grid-template-columns:1fr}.sf-detail dt{margin-top:.5rem}.sf-panel{padding:0}.sf-panels{padding-top:1rem}}
 """
 
-# Tabs follow the address (#waiting, #guard, ...), so a link can open one. Without script every section shows.
-JS = """(function(){var tabs=[].slice.call(document.querySelectorAll('[data-tab]'));var panels=[].slice.call(document.querySelectorAll('.tab-panel'));
+# Tabs follow the address (#waiting, #guard, ...), so a link can open one; without script every section shows.
+# The theme follows the viewer: Carbon's White, or Gray 100 for dark.
+JS = """(function(){var root=document.getElementById('sf-root');function theme(){var t=document.documentElement.getAttribute('data-theme');
+var dark=t==='dark'||(t!=='light'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);root.classList.toggle('cds--g100',dark);root.classList.toggle('cds--white',!dark)}
+theme();if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',theme);
+new MutationObserver(theme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+var tabs=[].slice.call(document.querySelectorAll('[data-tab]'));var panels=[].slice.call(document.querySelectorAll('.sf-panel'));
 function show(){var id=(location.hash||'').slice(1);if(!panels.some(function(p){return p.id===id}))id=panels[0]&&panels[0].id;
-panels.forEach(function(p){p.hidden=p.id!==id});tabs.forEach(function(t){if(t.getAttribute('data-tab')===id)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current')})}
-window.addEventListener('hashchange',show);show();
-document.addEventListener('click',function(ev){var b=ev.target.closest('button[data-copy]');if(!b)return;var t=b.getAttribute('data-copy');
-function done(){var o=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=o},1200)}
-function sel(){var i=b.closest('.input-group').querySelector('input');i.focus();i.select()}
-if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,sel)}else{sel()}})})();"""
+panels.forEach(function(p){p.hidden=p.id!==id});tabs.forEach(function(t){var on=t.getAttribute('data-tab')===id;t.classList.toggle('cds--tabs__nav-item--selected',on);t.setAttribute('aria-selected',on?'true':'false')})}
+window.addEventListener('hashchange',show);show();if(location.hash)window.scrollTo(0,0);
+tabs.forEach(function(t){t.addEventListener('click',function(ev){ev.preventDefault();history.replaceState(null,'','#'+t.getAttribute('data-tab'));show()})});
+document.addEventListener('click',function(ev){var b=ev.target.closest('.cds--table-expand__button');if(!b)return;var row=document.getElementById(b.getAttribute('aria-controls'));
+var open=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',open?'true':'false');row.hidden=!open;b.closest('tr').classList.toggle('cds--expandable-row',open);
+var td=b.closest('td');if(open)td.setAttribute('data-previous-value','collapsed');else td.removeAttribute('data-previous-value')})})();"""
+
+FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap">')
 
 
-def primer_css():
+def carbon_css():
     try:
-        with open(PRIMER) as f:
+        with open(CARBON) as f:
             return f.read()
     except OSError:
         return ""
 
 
 def page(title, body):
-    return ('<!doctype html>\n<html lang="en" data-color-mode="auto" data-light-theme="light" data-dark-theme="dark">\n<head>\n<meta charset="utf-8">\n'
+    return ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-            f"<title>{e(title)}</title>\n<style>{primer_css()}</style>\n<style>{CSS}</style>\n</head>\n<body>\n{body}\n<script>{JS}</script>\n</body>\n</html>\n")
+            f"<title>{e(title)}</title>\n{FONTS}\n<style>{carbon_css()}</style>\n<style>{CSS}</style>\n</head>\n<body>\n"
+            f'<div id="sf-root" class="sf-root cds--white">\n{body}\n</div>\n<script>{JS}</script>\n</body>\n</html>\n')
 
 
 def main():
