@@ -42,6 +42,8 @@ svg.i{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:500}
 .tabs .n{font-size:12px;color:var(--faint)}.tabs a[aria-current="page"] .n{color:var(--muted)}
 .main{flex:1;min-height:0;display:flex}
+.intro{flex:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--subtle);color:var(--ink-2)}
+.intro b{color:var(--ink);font-weight:600}
 
 /* rule list */
 .list{flex:0 0 380px;display:flex;flex-direction:column;border-right:1px solid var(--line);min-width:0}
@@ -65,6 +67,7 @@ svg.i{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .detail-inner{max-width:760px;padding:24px 32px 48px;display:flex;flex-direction:column;gap:24px}
 .head h1{margin:0;font-family:var(--mono);font-size:16px;line-height:24px;font-weight:500}
 .head p{margin:4px 0 0;font-size:14px;line-height:22px;color:var(--ink)}
+.head .stops{margin-top:6px;font-size:13px;line-height:20px;color:var(--ink-2)}.head .stops b{font-weight:500;color:var(--ink)}
 .meta{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:10px;color:var(--muted)}
 .meta span{display:inline-flex;align-items:center;gap:6px}
 .tag{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;background:var(--subtle);border:1px solid var(--line);color:var(--ink-2);font-size:12px;font-weight:500}
@@ -178,8 +181,19 @@ table.data .sub{color:var(--muted);font-size:12px;margin-top:2px}
   function url(x) { x = String(x || ""); return /^https:\/\/[^\s"'<>]+$/.test(x) ? x : "#"; }
   function esc(x) { return String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function $(sel) { return document.querySelector(sel); }
-  function effect(sev) { return sev === "warn" ? ["Warns", ""] : sev === "info" ? ["Note", ""] : ["Blocks", " block"]; }
+  function effect(sev) { return sev === "warn" ? ["Warns", ""] : sev === "info" ? ["Note", ""] : ["Blocks the change", " block"]; }
   function tag(sev) { var e = effect(sev); return '<span class="tag' + e[1] + '">' + e[0] + "</span>"; }
+  // The hook names, in words a person who has never seen the factory understands.
+  var WHERE = { "agent edit hook": "before an agent edits a file", "agent command hook": "before an agent runs a command", "Stop hook": "when an agent finishes",
+                "pre-commit": "before each commit", "CI": "on each pull request", "A note on the pull request": "as a note on the pull request" };
+  function where(label) {
+    var parts = String(label || "").split(/,\s*/).filter(Boolean).map(function (x) { return WHERE[x] || x; });
+    return parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : (parts[0] || "");
+  }
+  function day(d) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ""); if (!m) return d || "";
+    return +m[3] + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][+m[2] - 1] + " " + m[1];
+  }
   function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
   function setupItems() {
     var items = [];
@@ -224,6 +238,12 @@ table.data .sub{color:var(--muted);font-size:12px;margin-top:2px}
     h.push('<nav class="tabs" aria-label="Views">');
     views.forEach(function (v) { h.push('<a href="#' + v[0] + '"' + (ui.view === v[0] ? ' aria-current="page"' : "") + ">" + esc(v[1]) + (c[v[0]] !== "" ? ' <span class="n num">' + c[v[0]] + "</span>" : "") + "</a>"); });
     h.push("</nav>");
+    if (ui.view === "waiting" && S.waiting.length) {
+      var commits = Math.max.apply(null, [0].concat(S.waiting.map(function (r) { return num(r.commits) || 0; })));
+      h.push('<div class="intro"><span><b>Rules suggested for ' + esc(S.repo.name) + "</b> from its codebase map" + (commits ? " and its last " + commits + " commits" : "")
+        + ". A rule you accept is checked on every change here, by an agent or a person: when an agent finishes, before each commit and on each pull request. Nothing is enforced until it is accepted.</span>"
+        + '<a href="#how">How this works</a></div>');
+    }
     h.push('<div class="main">' + (ui.view === "waiting" ? proposedView() : '<div class="page"><div class="page-inner">' + otherView(ui.view) + "</div></div>") + "</div>");
     if (!LOCAL) h.push('<footer class="foot">Built from ' + esc((S.repo.sha || "").slice(0, 12)) + (S.repo.day ? ", " + esc(S.repo.day) : "") + ". Decide from a checkout with <code>guard.py --serve</code>.</footer>");
     if (ui.dialog) h.push(dialogView());
@@ -255,8 +275,9 @@ table.data .sub{color:var(--muted);font-size:12px;margin-top:2px}
 
   function detailView(r) {
     var h = ['<div class="detail-inner"><div class="head"><h1>' + esc(r.id) + "</h1><p>" + esc(r.description) + "</p>"];
-    var by = r.source === "suggested" ? "guard.py --suggest" : r.source === "learned" ? "learn.py" : (r.source || "an agent");
-    h.push('<div class="meta"><span>' + tag(r.severity) + "</span><span>Runs in " + esc(r.enforcedBy) + "</span><span>Proposed " + esc(r.added || "") + " by " + esc(by) + "</span></div></div>");
+    var from = r.source === "learned" ? "from mistakes in the repository's history" : r.source === "suggested" ? "from the codebase map and history" : "by " + (r.source || "an agent");
+    if (r.stops) h.push('<div class="stops"><b>Stops:</b> ' + esc(r.stops) + "</div>");
+    h.push('<div class="meta"><span>' + tag(r.severity) + "</span><span>Checked " + esc(where(r.enforcedBy)) + "</span><span>Suggested " + esc(day(r.added)) + " " + esc(from) + "</span></div></div>");
     h.push(decisionBox(r));
     h.push('<div class="sec"><h2>Evidence from history</h2>');
     if (r.evidence.length) h.push('<table class="kv"><tbody>' + r.evidence.map(function (e) { return '<tr><th scope="row">' + esc(e[0]) + '</th><td class="num">' + esc(e[1]) + "</td></tr>"; }).join("") + "</tbody></table>");
@@ -330,10 +351,10 @@ table.data .sub{color:var(--muted);font-size:12px;margin-top:2px}
     if (v === "in-force") {
       h.push('<h1>In force</h1><p class="lede">From <code>.cartographer/guardrails.json</code>. guard.py checks every change against these.</p>');
       if (!S.inForce.length) return h.join("") + blank("No rules in force", plural(S.waiting.length, "rule is", "rules are") + ' <a href="#waiting">proposed</a>.');
-      h.push('<div class="scroll-x"><table class="data"><thead><tr><th>Rule</th><th>Effect</th><th>Requires</th><th>Runs in</th><th>Decided</th></tr></thead><tbody>');
+      h.push('<div class="scroll-x"><table class="data"><thead><tr><th>Rule</th><th>Effect</th><th>Requires</th><th>Checked</th><th>Decided</th></tr></thead><tbody>');
       S.inForce.forEach(function (r) {
         var d = r.decided || {};
-        h.push('<tr><td class="mono">' + esc(r.id) + "</td><td>" + tag(r.severity) + "</td><td>" + esc(r.description) + (r.fix ? '<div class="sub">On failure: ' + esc(r.fix) + "</div>" : "") + "</td><td>" + esc(r.enforcedBy) + "</td><td>"
+        h.push('<tr><td class="mono">' + esc(r.id) + "</td><td>" + tag(r.severity) + "</td><td>" + esc(r.description) + (r.fix ? '<div class="sub">On failure: ' + esc(r.fix) + "</div>" : "") + "</td><td>" + esc(where(r.enforcedBy)) + "</td><td>"
           + (d.by || d.on ? esc([d.by, d.on].filter(Boolean).join(", ")) + (d.why ? '<div class="sub">' + esc(d.why) + "</div>" : "") : '<span class="sub">Not recorded</span>') + "</td></tr>");
       });
       return h.join("") + "</tbody></table></div>";

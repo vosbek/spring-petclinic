@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "rules": [
     {
-      "id": "layering",
+      "id": "one-way-dependencies",
       "type": "layering",
       "severity": "block",
-      "description": "Components depend downward through the model's layers: Web → Domain → Platform → Data.",
+      "description": "Code only depends on the parts beneath it: web pages and controllers → business objects and their data access → startup and configuration → database schema.",
       "source": "suggested",
       "added": "2026-10-30",
-      "_why": "The model orders 4 layers; this keeps new code from importing upward.",
+      "_why": "The codebase map orders the code into 4 parts. Keeping dependencies one way means the business objects can be changed and tested without the web pages, and agents often add a shortcut import that breaks this.",
       "_replay": {
         "replayable": true,
         "commits": 172,
@@ -16,16 +16,17 @@
         "followedByFixOrRevert": 0,
         "hitRatePct": null,
         "baseRatePct": 6
-      }
+      },
+      "_stops": "Business logic importing from the web layer. Planted defect #6 did exactly that (the Pet class importing VetRepository from the vets web code) and got through, because no rule was in force."
     },
     {
-      "id": "no-new-cycles",
+      "id": "no-circular-dependencies",
       "type": "no-new-cycles",
       "severity": "block",
-      "description": "No import may close a dependency cycle between components.",
+      "description": "No change may make two parts of the code depend on each other, directly or through other parts.",
       "source": "suggested",
       "added": "2026-10-30",
-      "_why": "Cycles make components impossible to change or release separately.",
+      "_why": "Parts that depend on each other cannot be changed, tested or released on their own.",
       "_replay": {
         "replayable": true,
         "commits": 172,
@@ -33,16 +34,17 @@
         "followedByFixOrRevert": 0,
         "hitRatePct": null,
         "baseRatePct": 6
-      }
+      },
+      "_stops": "A new import that closes a loop, so that changing either part means changing both."
     },
     {
-      "id": "pinned-snippets",
+      "id": "map-stays-current",
       "type": "pinned-snippets",
       "severity": "block",
-      "description": "Code the model pins as key must not change without the model.",
+      "description": "A change to code the codebase map quotes as key updates the map in the same change.",
       "source": "suggested",
       "added": "2026-10-30",
-      "_why": "5 snippets are pinned; changes to them silently invalidate the map.",
+      "_why": "The map quotes 5 pieces of key code. Agents read the map before they edit, so it has to stay true.",
       "_replay": {
         "replayable": false,
         "commits": null,
@@ -50,17 +52,18 @@
         "followedByFixOrRevert": null,
         "hitRatePct": null,
         "baseRatePct": null
-      }
+      },
+      "_stops": "The map silently going out of date, so the next agent or engineer who reads it is misled."
     },
     {
-      "id": "interface-change",
+      "id": "endpoint-removals-flagged",
       "type": "interface-change",
       "severity": "warn",
       "on": "removed",
-      "description": "Removing or changing a declared interface (route, tool, topic) needs its contract updated.",
+      "description": "A change that removes a web route or endpoint is flagged for the reviewer.",
       "source": "suggested",
       "added": "2026-10-30",
-      "_why": "45 interface declarations found.",
+      "_why": "The map found 45 routes and endpoints in this repository.",
       "_replay": {
         "replayable": true,
         "commits": 172,
@@ -68,17 +71,18 @@
         "followedByFixOrRevert": 0,
         "hitRatePct": 0,
         "baseRatePct": 6
-      }
+      },
+      "_stops": "Removing a page or endpoint that people or other code use without anyone noticing in review."
     },
     {
-      "id": "tests-required",
+      "id": "tests-with-changes",
       "type": "tests-required",
       "severity": "warn",
       "minLines": 30,
-      "description": "A code change of 30+ lines comes with a test change.",
+      "description": "A code change of 30 or more lines includes a change to a test.",
       "source": "suggested",
       "added": "2026-10-30",
-      "_why": "20 test files import production code here, so the convention exists.",
+      "_why": "20 test files here test production code, so testing changes is already the habit.",
       "_replay": {
         "replayable": true,
         "commits": 172,
@@ -86,14 +90,15 @@
         "followedByFixOrRevert": 0,
         "hitRatePct": 0,
         "baseRatePct": 6
-      }
+      },
+      "_stops": "A sizeable change with no test touched, so nothing shows the new behaviour works."
     },
     {
-      "id": "max-size",
+      "id": "reviewable-size",
       "type": "max-size",
       "severity": "warn",
       "max": 1000,
-      "description": "Changes stay reviewable.",
+      "description": "A change stays under 1,000 changed lines.",
       "source": "suggested",
       "added": "2026-10-30",
       "_why": "Large changes get shallow reviews.",
@@ -104,16 +109,17 @@
         "followedByFixOrRevert": 0,
         "hitRatePct": 0,
         "baseRatePct": 6
-      }
+      },
+      "_stops": "A change too big to review properly."
     },
     {
-      "id": "ratchet",
+      "id": "no-new-structural-debt",
       "type": "ratchet",
       "severity": "block",
-      "description": "Structural debt never grows: layer violations, dependency cycles, dependencies not in the model, hidden dependencies, components no test imports, model check errors.",
+      "description": "Structural problems can only go down: dependencies that point the wrong way, circular dependencies, dependencies the map does not know about, files that keep changing together with no link in the map, parts of the code no test reaches, errors in the map.",
       "source": "suggested",
       "added": "2026-10-30",
-      "_why": "Locks today's counts so they can only go down. Run --baseline after accepting.",
+      "_why": "It records today's counts and fails a change that raises any of them, so the code can only get cleaner.",
       "_replay": {
         "replayable": false,
         "commits": null,
@@ -121,7 +127,8 @@
         "followedByFixOrRevert": null,
         "hitRatePct": null,
         "baseRatePct": null
-      }
+      },
+      "_stops": "Any change that adds one more structural problem, while the ones already there are allowed until someone fixes them."
     }
   ]
 }

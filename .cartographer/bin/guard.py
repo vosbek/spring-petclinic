@@ -61,8 +61,9 @@ def enforced_label(rule):
         parts.append("CI" if rule.get("type") == "ratchet" else "Stop hook, pre-commit, CI")
     return ", ".join(parts)
 METRICS = ["layerViolations", "cycles", "unmodeledDependencies", "hiddenDependencies", "untestedComponents", "checkErrors"]
-METRIC_LABEL = {"layerViolations": "layer violations", "cycles": "dependency cycles", "unmodeledDependencies": "dependencies not in the model",
-                "hiddenDependencies": "hidden dependencies", "untestedComponents": "components no test imports", "checkErrors": "model check errors"}
+METRIC_LABEL = {"layerViolations": "dependencies that point the wrong way", "cycles": "circular dependencies",
+                "unmodeledDependencies": "dependencies the map does not know about", "hiddenDependencies": "files that keep changing together with no link in the map",
+                "untestedComponents": "parts of the code no test reaches", "checkErrors": "errors in the map"}
 ALLOW = re.compile(r"cartographer-allow:\s*([\w*.-]+)\s+until\s+(\d{4}-\d{2}-\d{2})\s+by\s+(\S+?)\s*[:\-]\s*(\S.*)")
 LOCKFILES = ["**/package-lock.json", "**/yarn.lock", "**/pnpm-lock.yaml", "**/poetry.lock", "**/Cargo.lock", "**/go.sum",
              "**/composer.lock", "**/Gemfile.lock", "**/*.min.js", "**/*.snap", "**/uv.lock"]
@@ -1150,14 +1151,21 @@ def suggest(ctx, since_days=365, max_commits=500):
     layers = [(l.get("name") or l.get("id")) if isinstance(l, dict) else str(l) for l in ctx.model.get("layers", [])
               if (l.get("id") if isinstance(l, dict) else l) != "external"]
     if ctx.curated and len(layers) >= 2 and "layering" not in have_types:
-        add({"id": "layering", "type": "layering", "severity": "block", "description": "Components depend downward through the model's layers: " + " → ".join(layers) + "."},
-            "The model orders %d layers; this keeps new code from importing upward." % len(layers))
+        add({"id": "one-way-dependencies", "type": "layering", "severity": "block",
+             "description": "Code only depends on the parts beneath it: " + " → ".join(layers) + ".",
+             "_stops": "A lower part of the code reaching up into a higher one, such as business logic importing from the screens."},
+            "The codebase map orders the code into %d parts. Keeping dependencies one way means the lower parts can be changed and tested "
+            "without the ones above, and agents often add a shortcut import that breaks this." % len(layers))
     if ctx.graph and "no-new-cycles" not in have_types:
-        add({"id": "no-new-cycles", "type": "no-new-cycles", "severity": "block", "description": "No import may close a dependency cycle between components."},
-            "Cycles make components impossible to change or release separately.")
+        add({"id": "no-circular-dependencies", "type": "no-new-cycles", "severity": "block",
+             "description": "No change may make two parts of the code depend on each other, directly or through other parts.",
+             "_stops": "A new import that closes a loop, so that changing either part means changing both."},
+            "Parts that depend on each other cannot be changed, tested or released on their own.")
     if ctx.model.get("snippets") and "pinned-snippets" not in have_types:
-        add({"id": "pinned-snippets", "type": "pinned-snippets", "severity": "block", "description": "Code the model pins as key must not change without the model."},
-            "%d snippets are pinned; changes to them silently invalidate the map." % len(ctx.model["snippets"]))
+        add({"id": "map-stays-current", "type": "pinned-snippets", "severity": "block",
+             "description": "A change to code the codebase map quotes as key updates the map in the same change.",
+             "_stops": "The map silently going out of date, so the next agent or engineer who reads it is misled."},
+            "The map quotes %d pieces of key code. Agents read the map before they edit, so it has to stay true." % len(ctx.model["snippets"]))
 
     # co-change rules from history, ranked by how often skipping the partner was followed by a fix to it
     if ctx.hist:
@@ -1188,9 +1196,11 @@ def suggest(ctx, since_days=365, max_commits=500):
                 pairs.append((missed_then_fixed, prob, p["shared"], a, b))
         pairs.sort(key=lambda x: (-x[0], -x[1], -x[2]))
         for mtf, prob, shared, a, b in pairs[:6]:
-            rid = "co-change-" + re.sub(r"[^a-z0-9]+", "-", stem(a).lower() + "-" + stem(b).lower()).strip("-")[:48]
+            rid = "change-together-" + re.sub(r"[^a-z0-9]+", "-", stem(a).lower() + "-" + stem(b).lower()).strip("-")[:48]
             add({"id": rid, "type": "co-change", "severity": "warn" if mtf == 0 else "block", "when": a, "require": b,
-                 "description": "%s changes with %s %d%% of the time (%d commits)." % (b, a, round(prob * 100), shared)},
+                 "description": "A change to %s also changes %s." % (posixpath.basename(a), posixpath.basename(b)),
+                 "_stops": "Changing %s and forgetting %s, which history shows go together (%d%% of %d commits)." % (
+                     posixpath.basename(a), posixpath.basename(b), round(prob * 100), shared)},
                 "%s followed %d of %d changes to %s; %d time(s) it was skipped and a fix to it followed within %d days." % (
                     posixpath.basename(b), shared, int(round(shared / prob)), posixpath.basename(a), mtf, FOLLOW_UP_DAYS))
 
@@ -1203,30 +1213,38 @@ def suggest(ctx, since_days=365, max_commits=500):
                 mig_dirs[posixpath.dirname(p)] += 1
         dirs = [d for d, n in mig_dirs.items() if n >= 3]
         if dirs:
-            add({"id": "applied-migrations", "type": "protected-paths", "severity": "block", "allowAdd": True,
-                 "paths": [d + "/**" for d in sorted(dirs)], "description": "Applied migrations are immutable; add a new migration instead.",
+            add({"id": "applied-migrations-unchanged", "type": "protected-paths", "severity": "block", "allowAdd": True,
+                 "paths": [d + "/**" for d in sorted(dirs)], "description": "A database migration that has been applied is never edited; schema changes are new migrations.",
+                 "_stops": "Editing a migration that has already run somewhere, so databases end up different from each other.",
                  "fix": "Write a new versioned migration that makes the change."},
                 "%d versioned migration folder(s): %s." % (len(dirs), ", ".join(sorted(dirs)[:3])))
 
     if ctx.graph and ctx.graph.get("api") and "interface-change" not in have_types:
         specs = [r[0] for r in (ctx.inv or {}).get("files", []) if re.search(r"(openapi|swagger)[^/]*\.(ya?ml|json)$", r[0], re.I)]
-        rule = {"id": "interface-change", "type": "interface-change", "severity": "warn", "on": "removed",
-                "description": "Removing or changing a declared interface (route, tool, topic) needs its contract updated."}
+        rule = {"id": "endpoint-removals-flagged", "type": "interface-change", "severity": "warn", "on": "removed",
+                "description": "A change that removes a public entry point (a web route, an API endpoint, a message topic) is flagged.",
+                "_stops": "Removing something other code or users call without anyone noticing in review."}
         if specs:
             rule["require"] = specs[:3]
             rule["severity"] = "block"
+            rule["description"] = "A change that removes a public entry point also updates %s." % posixpath.basename(specs[0])
         add(rule, "%d interface declarations found%s." % (len(ctx.graph["api"]), (" and a spec at " + specs[0]) if specs else ""))
 
     if ctx.graph and ctx.graph.get("tests") and "tests-required" not in have_types:
-        add({"id": "tests-required", "type": "tests-required", "severity": "warn", "minLines": 30,
-             "description": "A code change of 30+ lines comes with a test change."},
-            "%d test files import production code here, so the convention exists." % len(ctx.graph["tests"]))
+        add({"id": "tests-with-changes", "type": "tests-required", "severity": "warn", "minLines": 30,
+             "description": "A code change of 30 or more lines includes a change to a test.",
+             "_stops": "A sizeable change with no test touched, so nothing shows the new behaviour works."},
+            "%d test files here test production code, so testing changes is already the habit." % len(ctx.graph["tests"]))
     if "max-size" not in have_types:
-        add({"id": "max-size", "type": "max-size", "severity": "warn", "max": 1000, "description": "Changes stay reviewable."},
+        add({"id": "reviewable-size", "type": "max-size", "severity": "warn", "max": 1000,
+             "description": "A change stays under 1,000 changed lines.",
+             "_stops": "A change too big to review properly."},
             "Large changes get shallow reviews.")
     if "ratchet" not in have_types and ctx.graph:
-        add({"id": "ratchet", "type": "ratchet", "severity": "block", "description": "Structural debt never grows: " + ", ".join(METRIC_LABEL[m] for m in METRICS) + "."},
-            "Locks today's counts so they can only go down. Run --baseline after accepting.")
+        add({"id": "no-new-structural-debt", "type": "ratchet", "severity": "block",
+             "description": "Structural problems can only go down: " + ", ".join(METRIC_LABEL[m] for m in METRICS) + ".",
+             "_stops": "Any change that adds one more structural problem, while the ones already there are allowed until someone fixes them."},
+            "It records today's counts and fails a change that raises any of them, so the code can only get cleaner.")
 
     rep = replay(ctx, [c["rule"] for c in cands], since_days, max_commits) if cands else {"rules": []}
     by = {r["rule"]: r for r in rep["rules"]}

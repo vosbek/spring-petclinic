@@ -76,12 +76,7 @@ def load(path, default):
 
 
 def run(repo, *argv, env=None, input=None, timeout=60):
-    """Run a command and return its output as UTF-8 text, the same on every system. Bytes in and out: in text mode
-    Windows decodes git's output with the console code page (so "\u2192" in a rule's description comes back changed)
-    and turns "\\n" written to stdin into "\\r\\n", which would change the committed rule files."""
-    r = subprocess.run(list(argv), cwd=repo, capture_output=True, env=env, timeout=timeout,
-                       input=input.encode("utf-8") if isinstance(input, str) else input)
-    return subprocess.CompletedProcess(r.args, r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace"))
+    return subprocess.run(list(argv), cwd=repo, capture_output=True, text=True, env=env, input=input, timeout=timeout)
 
 
 def git(repo, *args, env=None):
@@ -361,7 +356,7 @@ def state(repo, fence_report=None, waiting=None, repo_url=None, local=False):
         rp = replay_of(r)
         waiting_rules.append({
             "id": r["id"], "type": r.get("type"), "severity": severity(r), "description": r.get("description") or r.get("type"),
-            "why": r.get("_why") or "", "added": r.get("added", ""), "source": r.get("source", ""),
+            "why": r.get("_why") or "", "stops": r.get("_stops") or "", "added": r.get("added", ""), "source": r.get("source", ""),
             "replayable": replayable(r), "fired": rp["fired"] if replayable(r) else None, "commits": rp["commits"] if replayable(r) else None,
             "replayHead": rp["head"], "evidence": evidence_rows(r), "reading": replay_text(r), "examples": rp["examples"],
             "enforcedBy": "A note on the pull request" if severity(r) == "info" else guard.enforced_label(r),
