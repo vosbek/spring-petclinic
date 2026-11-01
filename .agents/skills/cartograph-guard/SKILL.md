@@ -9,7 +9,7 @@ description: Turn the codebase map into deterministic guardrails (layering, no n
 
 A guardrail is a rule a script checks against a diff. It returns the same verdict for the same change every time, and its error names the fix. Rules are only worth having when they would have caught something real, so every rule is replayed against history before it's accepted. Read `.cartographer/docs/guardrails.md` once for the rule types and fields.
 
-**You propose; a human accepts.** You never edit `.cartographer/guardrails.json` or `baseline.json`; the edit hook refuses it. Proposals go to `.cartographer/guardrails.proposed.json`, and `guard.py --accept` moves them after the user says yes.
+**You propose; a person decides.** You never edit `.cartographer/guardrails.json` or `baseline.json`, and you never run `guard.py --accept`, `--reject` or `--serve`; the agent hooks refuse all of them. Proposals go to `.cartographer/guardrails.proposed.json`. The person decides in the rules workbench (`python3 .cartographer/bin/guard.py --serve`): Accept or Reject each with a reason, then one pull request committed as them.
 
 ## 1. Facts
 
@@ -79,10 +79,13 @@ When the user asks for the full rules, every instruction lands in one of the thr
 
 ## 4. Accept, baseline, enforce
 
-Show the user a table with one row per proposal: id, what it requires, replay result, and your recommendation. After they approve:
+Show the user a table with one row per proposal: id, what it requires, replay result, and your recommendation. Then hand over the decision:
+
+> Open the rules workbench in your own terminal: `python3 .cartographer/bin/guard.py --serve`. Accept or reject each rule with a reason, then press "Commit and open pull request". The rules are in force once the code owner merges it.
+
+After that pull request merges:
 
 ```bash
-python3 .cartographer/bin/guard.py --accept <id> <id> ...
 python3 .cartographer/bin/guard.py --baseline            # locks today's structural counts; they can only go down
 python3 .cartographer/bin/guard.py --table               # paste between the markers in CLAUDE.md / AGENTS.md
 ```

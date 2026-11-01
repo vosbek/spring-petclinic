@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rules</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* The rules workbench (design: Claude Design canvas "Local Rules View", artboard C). Always light. */
+:root{--ink:#16181d;--muted:#5b6270;--faint:#9aa0aa;--line:#e3e5e8;--line-soft:#eef0f2;--field:#c9cdd3;--panel:#f7f8fa;--select:#edf2fc;--select-ring:#b9c9ea;
+--accent:#0b3d91;--accent-ink:#ffffff;--accent-hover:#08306f;--disabled:#e3e5e8;--disabled-ink:#6b7280;--ok:#0b3d91;--bad:#9b1c1c;--bad-bg:#fdecec;
+--mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0;background:#ffffff;color:var(--ink)}
+body{font-family:Inter,'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:20px;font-feature-settings:'tnum' 1,'cv11' 1}
+a{color:var(--accent)}a:hover{color:var(--accent-hover)}
+button{font:inherit;cursor:pointer;color:inherit}button:disabled{cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+code,.mono{font-family:var(--mono);font-size:13px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.app{height:100vh;display:flex;flex-direction:column}
+.top{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:48px;padding:0 16px;border-bottom:1px solid var(--line)}
+.top .sep{color:var(--faint)}.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.grow{flex:1}.small{font-size:13px;color:var(--muted)}.small b{color:var(--ink);font-weight:500}
+.bar{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-height:44px;padding:6px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.seg{display:inline-flex;flex-wrap:wrap;padding:2px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.seg a{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:4px;color:var(--ink);text-decoration:none;font-size:13px}
+.seg a .n{color:var(--muted)}.seg a[aria-current="page"]{background:var(--ink);color:#fff;font-weight:500}.seg a[aria-current="page"] .n{color:#fff;opacity:.75}
+.search{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 8px;border:1px solid var(--field);border-radius:6px;background:#fff;min-width:200px}
+.search input{border:0;outline:0;font:inherit;font-size:13px;width:100%;background:transparent}
+.main{flex:1 1 auto;min-height:0;display:flex}
+.pane{min-width:0;overflow:auto}
+.list{flex:0 0 440px;border-right:1px solid var(--line)}
+.detail{flex:1 1 auto;display:flex;flex-direction:column;overflow:hidden}
+.detail-body{flex:1 1 auto;min-height:0;overflow:auto;padding:24px 32px;display:flex;flex-direction:column;gap:24px}
+.side{flex:0 0 320px;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
+.full{flex:1 1 auto;overflow:auto;padding:24px 32px}
+table.data{width:100%;border-collapse:collapse;font-size:13px}
+table.data th{height:32px;padding:0 8px;text-align:left;font-weight:500;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap}
+table.data td{padding:8px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.data th:first-child,table.data td:first-child{padding-left:16px}table.data th:last-child,table.data td:last-child{padding-right:16px}
+.full table.data th:first-child,.full table.data td:first-child{padding-left:0}
+table.rules tr{height:40px}table.rules td{vertical-align:middle;padding-top:0;padding-bottom:0}
+table.rules tr.sel{background:var(--select);box-shadow:inset 0 0 0 1px var(--select-ring)}
+table.rules button.pick{display:block;width:100%;min-height:40px;padding:0;border:0;background:none;text-align:left;font-family:var(--mono);font-size:13px}
+.num{text-align:right;white-space:nowrap}
+.b{display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:4px;font-size:12px;font-weight:500;white-space:nowrap}
+.b-block{background:var(--ink);color:#fff}.b-warn{border:1px solid var(--faint);color:var(--ink)}.b-info{border:1px dashed var(--faint);color:var(--muted)}
+.b-accept{background:var(--accent);color:#fff}.b-reject{background:var(--line);color:var(--ink)}.b-pr{border:1px solid var(--accent);color:var(--accent);text-decoration:none}
+.undecided{font-size:12px;color:var(--muted)}
+h1.rid{margin:0;font-family:var(--mono);font-size:18px;line-height:24px;font-weight:500}
+.lead{margin:0;font-size:15px;line-height:22px;max-width:70ch}
+.meta{margin:0;font-size:13px;color:var(--muted);max-width:80ch}
+.sec{display:flex;flex-direction:column;gap:8px;max-width:760px}
+.sec h2{margin:0;font-size:13px;font-weight:600}
+.kv{width:100%;border-collapse:collapse;font-size:13px}.kv th{padding:0 16px 0 0;text-align:left;font-weight:400;color:var(--muted);width:62%;height:32px;border-bottom:1px solid var(--line-soft)}
+.kv td{text-align:right;font-weight:500;border-bottom:1px solid var(--line-soft)}
+.examples{margin:0;padding:0;list-style:none;font-size:13px}.examples li{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--line-soft)}
+details.def summary{cursor:pointer;min-height:32px;display:flex;align-items:center;font-weight:600;font-size:13px}
+pre.code{margin:8px 0 0;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:12px;line-height:18px;overflow-x:auto;white-space:pre}
+.decide{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;padding:12px 32px;border-top:1px solid var(--line);background:#fff}
+.decide .field{flex:1 1 320px;display:flex;flex-direction:column;gap:4px}
+label.lab,.lab{font-size:12px;font-weight:500;color:var(--muted)}
+textarea,input.text{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--field);border-radius:6px;color:var(--ink);background:#fff}
+textarea{resize:vertical;min-height:56px}textarea:disabled{background:var(--panel);color:var(--muted)}
+input.text{height:32px;padding:0 10px}
+.btns{display:flex;gap:8px;padding-top:20px}
+.btn{height:36px;padding:0 14px;border-radius:6px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--field);background:#fff;text-decoration:none;color:var(--ink)}
+.btn kbd{font-family:var(--mono);font-size:11px;opacity:.75}
+.btn-primary{border:0;background:var(--accent);color:#fff}.btn-primary:hover:not(:disabled){background:var(--accent-hover)}
+.btn-outline{border:1px solid var(--ink)}
+.btn:disabled{border-color:var(--line);background:var(--disabled);color:var(--disabled-ink)}.btn-outline:disabled{background:#fff}
+.btn-quiet{border:0;background:transparent;color:var(--muted);height:32px}.btn-quiet:disabled{background:transparent;color:var(--faint)}
+.state-note{flex:1 1 320px;font-size:13px;padding-top:4px}
+.side-head{padding:16px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line)}
+.side-head h2{margin:0;font-size:13px;font-weight:600}
+.side-body{flex:1 1 auto;min-height:0;overflow:auto;padding:8px 16px;display:flex;flex-direction:column;gap:4px}
+.side-foot{flex:0 0 auto;padding:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.dec{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-bottom:1px solid var(--line)}
+.dec .row{display:flex;align-items:center;gap:8px}.dec .why{font-size:12px;line-height:16px;color:var(--muted)}
+.files{display:flex;flex-direction:column;gap:2px;padding-top:12px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.note{padding:10px 12px;border-radius:6px;font-size:13px}.note-ok{background:var(--select)}.note-bad{background:var(--bad-bg);color:var(--bad)}
+.also{padding:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;font-size:13px}
+.also h2{margin:0;font-size:13px;font-weight:600}.also ul{margin:0;padding-left:18px}.also li{margin:2px 0}
+.foot{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;min-height:28px;padding:4px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.empty{padding:24px 0;color:var(--muted)}.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px;font-weight:600}
+.page-h{margin:0 0 4px;font-size:18px;font-weight:600}.page-lede{margin:0 0 16px;font-size:13px;color:var(--muted);max-width:80ch}
+.scrim{position:fixed;inset:0;background:rgba(22,24,29,.32);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.dialog{width:600px;max-width:100%;max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 12px 32px rgba(22,24,29,.24);display:flex;flex-direction:column}
+.dialog header{padding:16px 20px;border-bottom:1px solid var(--line)}.dialog h2{margin:0;font-size:15px;font-weight:600}
+.dialog .body{padding:16px 20px;display:flex;flex-direction:column;gap:12px}.dialog footer{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+.dialog pre{margin:0;padding:10px;max-height:200px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:12px;line-height:18px;white-space:pre-wrap}
+.copy{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.copy code{padding:6px 8px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+/* How it works (rules_model.py) */
+.sf-block{margin-bottom:32px}.sf-h2{font-size:15px;font-weight:600;margin:0 0 4px}
+.sf-lede{font-size:13px;color:var(--muted);max-width:80ch;margin:0 0 12px}.sf-cap{font-size:12px;color:var(--muted);margin:6px 0 0}
+.sf-diagram{overflow-x:auto;border:1px solid var(--line);border-radius:6px;padding:12px}.sf-diagram svg{display:block;max-width:none}
+@media (min-width:1300px){.sf-diagram svg{width:100%;height:auto}.sf-cap{display:none}}
+.sf-d-lane{fill:var(--panel)}.sf-d-col{font-size:13px;font-weight:600;fill:var(--muted)}
+.sf-d-box{fill:#fff;stroke:var(--faint);stroke-width:1}.sf-d-box--decide{fill:var(--accent);stroke:var(--accent)}.sf-d-box--person{fill:#fff;stroke:var(--ink);stroke-width:2}
+.sf-d-t{font-size:12.5px;fill:var(--ink)}.sf-d-tb{font-size:13px;font-weight:600;fill:var(--ink)}.sf-d-t--on{fill:#fff}.sf-d-muted{fill:var(--muted)}
+.sf-d-label{font-size:12px;fill:var(--muted)}.sf-d-arrow{fill:none;stroke:var(--muted);stroke-width:1.4}.sf-d-arrow--dashed{stroke-dasharray:5 4}.sf-d-head{fill:var(--muted)}
+.sf-id{font-family:var(--mono);font-size:12px}.sf-list{margin:0;padding-left:20px;font-size:13px;line-height:1.6;max-width:80ch}
+.scroll-x{overflow-x:auto}
+@media (max-width:1100px){.side{flex-basis:280px}.list{flex-basis:360px}}
+@media (max-width:900px){.app{height:auto;min-height:100vh}.main,.detail,.side{display:block}.pane,.detail,.side,.side-body,.detail-body{overflow:visible}
+.list,.side{border:0;border-bottom:1px solid var(--line)}.detail-body{padding:16px}.decide{padding:12px 16px}.full{padding:16px}}
+</style>
+</head>
+<body>
+<div id="app" class="app"></div>
+<script>
+(function () {
+  "use strict";
+  var S = /*__STATE__*/null;
+  var LOCAL = S && S.mode === "local";
+  var ui = { view: "waiting", sel: null, why: {}, filter: "", dialog: null, busy: false, error: "", done: null, confirmDiscard: false };
+  var VIEWS = [["waiting", "Waiting"], ["in-force", "In force"], ["rejected", "Rejected"], ["exceptions", "Exceptions"], ["fence", "Fence checks"],
+               ["judgment", "Checked by a person"], ["owners", "Owners"], ["how", "How it works"]];
+
+  // Every value from the repository's files is text: esc() for markup, num() for counts, url() for links.
+  function num(x) { return typeof x === "number" && isFinite(x) ? x : null; }
+  function url(x) { x = String(x || ""); return /^https:\/\/[^\s"'<>]+$/.test(x) ? x : "#"; }
+  function esc(x) { return String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function $(sel) { return document.querySelector(sel); }
+  function effect(sev) { return sev === "warn" ? ["Warns", "b-warn", "Warns on a change"] : sev === "info" ? ["Note", "b-info", "A note on the pull request"] : ["Blocks", "b-block", "Blocks a change"]; }
+  function badge(sev, long) { var x = effect(sev); return '<span class="b ' + x[1] + '">' + esc(long ? x[2] : x[0]) + "</span>"; }
+  function counts() {
+    return { "waiting": S.waiting.length, "in-force": S.inForce.length, "rejected": S.rejected.length, "exceptions": S.exceptions.length,
+             "fence": S.checks.length, "judgment": S.judgment.length, "owners": S.owners.rows.length, "how": "" };
+  }
+  function shown() {
+    var f = ui.filter.trim().toLowerCase();
+    return S.waiting.filter(function (r) { return !f || (r.id + " " + r.description).toLowerCase().indexOf(f) >= 0; });
+  }
+  function current() {
+    var list = shown();
+    var r = list.filter(function (x) { return x.id === ui.sel; })[0] || list[0] || null;
+    if (r) ui.sel = r.id;
+    return r;
+  }
+  function hits(r) { var f = num(r.fired), c = num(r.commits); return f === null || c === null ? "–" : f + " / " + c; }
+  function decisionCell(r) {
+    if (r.pr) return '<a class="b b-pr" href="' + esc(url(r.pr.url)) + '" target="_blank" rel="noopener">In pull request</a>';
+    if (r.pending) return '<span class="b ' + (r.pending.decision === "accept" ? "b-accept" : "b-reject") + '">' + (r.pending.decision === "accept" ? "Accept" : "Reject") + "</span>";
+    return '<span class="undecided">Undecided</span>';
+  }
+
+  // ------------------------------------------------------------------ render
+  function render() {
+    var c = counts();
+    var views = VIEWS.filter(function (v) { return v[0] !== "judgment" || S.judgment.length; });
+    var replayCommits = Math.max.apply(null, [0].concat(S.waiting.map(function (r) { return num(r.commits) || 0; })));
+    var replayHead = (S.waiting.filter(function (r) { return r.replayHead; })[0] || {}).replayHead;
+    var h = [];
+    h.push('<header class="top"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="1" y="1" width="18" height="18" rx="4" fill="#0b3d91"></rect><path d="M6 7h8M6 10h8M6 13h5" stroke="#fff" stroke-width="1.6"></path></svg>');
+    h.push('<span style="font-weight:600">Rules</span><span class="sep" aria-hidden="true">/</span>');
+    h.push(S.repo.url ? '<a href="' + esc(url(S.repo.url)) + '" style="color:inherit;text-decoration:none">' + esc(S.repo.name) + "</a>" : "<span>" + esc(S.repo.name) + "</span>");
+    h.push('<span class="chip" title="Branch and commit">' + esc((S.repo.branch && S.repo.branch !== "HEAD" ? S.repo.branch + " · " : "") + (S.repo.sha || "").slice(0, 7)) + "</span>");
+    h.push('<span class="grow"></span>');
+    if (LOCAL) h.push(S.repo.login ? '<span class="small">Signed in to GitHub as <b>' + esc(S.repo.login) + "</b></span>" : '<span class="small">GitHub CLI is not signed in: run <code>gh auth login</code> to open pull requests</span>');
+    else h.push('<span class="small">Published copy, read-only</span>');
+    h.push("</header>");
+    h.push('<div class="bar"><nav class="seg" aria-label="Views">');
+    views.forEach(function (v) { h.push('<a href="#' + v[0] + '"' + (ui.view === v[0] ? ' aria-current="page"' : "") + ">" + esc(v[1]) + (c[v[0]] !== "" ? ' <span class="n">' + c[v[0]] + "</span>" : "") + "</a>"); });
+    h.push("</nav>");
+    if (ui.view === "waiting") h.push('<label class="search"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="#5b6270" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg><span class="sr">Filter rules</span><input id="filter" placeholder="Filter rules  /" value="' + esc(ui.filter) + '"></label>');
+    h.push('<span class="grow"></span>');
+    if (replayCommits) h.push('<span class="small">Evidence: each proposal replayed on ' + replayCommits + " commits" + (replayHead ? " up to <code>" + esc(replayHead.slice(0, 7)) + "</code>" : "") + "</span>");
+    h.push("</div>");
+    h.push('<div class="main">');
+    if (ui.view === "waiting") h.push(waitingView()); else h.push('<div class="full">' + otherView(ui.view) + "</div>");
+    h.push("</div>");
+    h.push('<footer class="foot">');
+    if (LOCAL) h.push("<span>guard.py --serve on 127.0.0.1: only this computer can reach it</span><span class=\"grow\"></span><span>J / K move · A accept · R reject · Ctrl+Enter open pull request · / filter</span>");
+    else h.push("<span>Built from commit <code>" + esc((S.repo.sha || "").slice(0, 12)) + "</code>" + (S.repo.day ? ", " + esc(S.repo.day) : "") + " by rules_app.py, from " + S.sources.map(function (s) { return "<code>" + esc(s) + "</code>"; }).join(", ") + ".</span>");
+    h.push("</footer>");
+    if (ui.dialog) h.push(dialogView());
+    var focus = document.activeElement && document.activeElement.id;
+    var caret = focus && document.activeElement.selectionStart;
+    $("#app").innerHTML = h.join("");
+    if (focus && document.getElementById(focus)) { var el = document.getElementById(focus); el.focus(); try { if (caret != null) el.setSelectionRange(caret, caret); } catch (x) {} }
+    document.title = (S.repo.name ? S.repo.name + " rules" : "Rules");
+  }
+
+  function waitingView() {
+    var list = shown(), r = current(), h = [];
+    h.push('<section class="pane list" aria-label="Proposed rules"><table class="data rules"><thead><tr><th scope="col">Rule</th><th scope="col">Effect</th><th scope="col" class="num">Past hits</th><th scope="col">Decision</th></tr></thead><tbody>');
+    list.forEach(function (x) {
+      h.push('<tr class="' + (r && x.id === r.id ? "sel" : "") + '"><td><button type="button" class="pick" data-pick="' + esc(x.id) + '"' + (r && x.id === r.id ? ' aria-current="true"' : "") + ">" + esc(x.id) + "</button></td><td>" + badge(x.severity) + '</td><td class="num">' + hits(x) + "</td><td>" + decisionCell(x) + "</td></tr>");
+    });
+    h.push("</tbody></table>");
+    if (!S.waiting.length) h.push('<div class="empty" style="padding:16px"><b>Nothing waiting</b>Every proposed rule has been decided. guard.py --suggest proposes more from the map and history.</div>');
+    else if (!list.length) h.push('<div class="empty" style="padding:16px">No rule matches the filter.</div>');
+    h.push(alsoWaiting());
+    h.push("</section>");
+    h.push('<section class="pane detail" aria-label="Selected rule">' + (r ? detailView(r) : '<div class="detail-body"><div class="empty"><b>No rule selected</b></div></div>') + "</section>");
+    h.push(LOCAL ? changesView() : publishedSide());
+    return h.join("");
+  }
+
+  function alsoWaiting() {
+    var items = [];
+    (S.waitingPrs || []).forEach(function (p) { items.push('Pull request <a href="' + esc(url(p.url)) + '">#' + esc(p.number) + "</a> " + esc(p.title) + ": the fence failed and the gardener could not fix it (<code>/tend-fence</code>)."); });
+    S.exceptions.filter(function (x) { return x.expired || x.incomplete; }).forEach(function (x) { items.push(esc(x.kind) + " exception <code>" + esc(x.name) + "</code>: " + (x.expired ? "expired " + esc(x.expires) : "missing a reason, an approver or an expiry") + "."); });
+    S.personSteps.forEach(function (s) { items.push(esc(s).replace(/`([^`]+)`/g, "<code>$1</code>") + " <span class=\"small\">(ONBOARDING.md)</span>"); });
+    if (!items.length) return "";
+    return '<div class="also"><h2>Also waiting on a person</h2><ul>' + items.map(function (i) { return "<li>" + i + "</li>"; }).join("") + "</ul></div>";
+  }
+
+  function detailView(r) {
+    var h = ['<div class="detail-body">'];
+    h.push('<div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px"><h1 class="rid">' + esc(r.id) + "</h1>" + badge(r.severity, true) + "</div>");
+    h.push('<p class="lead">' + esc(r.description) + "</p>");
+    var by = r.source === "suggested" ? "guard.py --suggest" : r.source === "learned" ? "learn.py" : (r.source || "an agent");
+    h.push('<p class="meta">Proposed' + (r.added ? " " + esc(r.added) : "") + " by " + esc(by) + "." + (r.why ? " " + esc(r.why) : "") + "</p></div>");
+    h.push('<div class="sec"><h2>Evidence from history</h2>');
+    if (r.evidence.length) h.push('<table class="kv"><tbody>' + r.evidence.map(function (e) { return '<tr><th scope="row">' + esc(e[0]) + "</th><td>" + esc(e[1]) + "</td></tr>"; }).join("") + "</tbody></table>");
+    h.push('<p class="meta" style="color:var(--ink)">' + esc(r.reading) + "</p></div>");
+    if (r.examples && r.examples.length) {
+      h.push('<div class="sec"><h2>Commits it would have flagged</h2><ul class="examples">' + r.examples.map(function (x) {
+        return '<li><code>' + esc((x.sha || "").slice(0, 9)) + "</code><span>" + esc(x.subject || "") + "</span>" + (x.outcome ? '<span class="small">' + esc(x.outcome) + "</span>" : "") + "</li>";
+      }).join("") + "</ul></div>");
+    }
+    h.push('<div class="sec"><h2>Where it runs once in force</h2><p class="meta" style="color:var(--ink)">' + esc(r.enforcedBy) + ".</p></div>");
+    h.push('<details class="def sec"><summary>Rule definition</summary><pre class="code">' + esc(r.definition) + "</pre></details>");
+    h.push("</div>");
+    h.push(decideBar(r));
+    return h.join("");
+  }
+
+  function decideBar(r) {
+    if (!LOCAL) {
+      return '<div class="decide"><div class="state-note"><div class="lab" style="margin-bottom:6px">Decide this rule from a checkout of the repository</div><div class="copy"><code id="cmd">python3 .cartographer/bin/guard.py --serve</code><button type="button" class="btn" data-copy="cmd">Copy</button></div>'
+        + '<div class="small" style="margin-top:6px">It opens this page with Accept and Reject. Your decision becomes your own commit and pull request' + (S.repo.ruleOwners ? ", reviewed by " + esc(S.repo.ruleOwners) : "") + ".</div></div></div>";
+    }
+    if (r.pr) return '<div class="decide"><div class="state-note">' + (r.pr.decision === "accept" ? "Accepted" : "Rejected") + ' in <a href="' + esc(url(r.pr.url)) + '" target="_blank" rel="noopener">a pull request</a> on <code>' + esc(r.pr.branch) + "</code>. It takes effect when the pull request merges.</div></div>";
+    var p = r.pending, can = !p && (ui.why[r.id] || "").trim() && !ui.busy && !(S.stray && S.stray.length);
+    var h = ['<div class="decide"><div class="field"><label class="lab" for="why">Reason, recorded with the decision</label>'];
+    h.push('<textarea id="why" rows="2"' + (p ? " disabled" : "") + ' placeholder="What you weighed. It goes into the rule file, the commit and the pull request.">' + esc(p ? p.why : (ui.why[r.id] || "")) + "</textarea>");
+    if (p) h.push('<span class="small">' + (p.decision === "accept" ? "Accepted" : "Rejected") + " in your checkout, not committed. Undo it under Changes.</span>");
+    h.push('</div><div class="btns"><button type="button" class="btn btn-outline" data-act="reject"' + (can ? "" : " disabled") + '>Reject <kbd>R</kbd></button>');
+    h.push('<button type="button" class="btn btn-primary" data-act="accept"' + (can ? "" : " disabled") + ">Accept <kbd>A</kbd></button></div></div>");
+    return h.join("");
+  }
+
+  function changesView() {
+    var n = S.pending.length, h = ['<aside class="side" aria-label="Changes in your checkout"><div class="side-head"><h2>Changes in your checkout</h2><span class="small">' + (n ? n + (n === 1 ? " decision" : " decisions") : "Clean") + "</span></div>"];
+    h.push('<div class="side-body">');
+    if (ui.error && !ui.dialog) h.push('<div class="note note-bad" role="alert">' + esc(ui.error) + "</div>");
+    (S.stray || []).forEach(function (m) { h.push('<div class="note note-bad" role="alert">' + esc(m) + "</div>"); });
+    if (ui.done) h.push('<div class="note note-ok" role="status"><b>Pull request opened.</b> <a href="' + esc(url(ui.done.url)) + '" target="_blank" rel="noopener">' + esc(ui.done.url.replace(/^https:\/\/github\.com\//, "")) + "</a><br>Checks run on it; the rules are in force once it merges.</div>");
+    if (!n) h.push('<p class="small" style="margin:8px 0">No decisions yet. Each one edits the rule files in this checkout; one pull request carries them all.</p>');
+    S.pending.forEach(function (d) {
+      h.push('<div class="dec"><div class="row"><span class="b ' + (d.decision === "accept" ? "b-accept" : "b-reject") + '">' + (d.decision === "accept" ? "Accept" : "Reject") + '</span><span class="mono grow" style="min-width:0">' + esc(d.id) + '</span><button type="button" class="btn btn-quiet" data-undo="' + esc(d.id) + '" aria-label="Undo the decision on ' + esc(d.id) + '">Undo</button></div><span class="why">' + esc(d.why) + "</span></div>");
+    });
+    if (n) h.push('<div class="files"><span>Changed in .cartographer/</span><span>M guardrails.json</span><span>M guardrails.proposed.json</span></div>');
+    if (S.openPrs && S.openPrs.length) {
+      h.push('<div style="padding-top:16px;display:flex;flex-direction:column;gap:6px"><span class="lab">Open pull requests from this workbench</span>');
+      S.openPrs.forEach(function (p) { h.push('<a href="' + esc(url(p.url)) + '" target="_blank" rel="noopener" class="small" style="color:var(--accent)">' + esc(p.title) + "</a>"); });
+      h.push("</div>");
+    }
+    h.push("</div>");
+    h.push('<div class="side-foot"><button type="button" class="btn btn-primary" data-act="dialog"' + (n && !ui.busy ? "" : " disabled") + ">Commit and open pull request…</button>");
+    h.push('<button type="button" class="btn btn-quiet" data-act="discard"' + (n && !ui.busy ? "" : " disabled") + ">" + (ui.confirmDiscard ? "Discard " + n + (n === 1 ? " decision" : " decisions") + "? Press again" : "Discard changes") + "</button>");
+    if (S.repo.ruleOwners) h.push('<span class="small">Reviewer from CODEOWNERS: ' + esc(S.repo.ruleOwners) + "</span>");
+    h.push("</div></aside>");
+    return h.join("");
+  }
+
+  function publishedSide() {
+    return '<aside class="side" aria-label="How decisions are made"><div class="side-head"><h2>How a rule is decided</h2></div><div class="side-body" style="gap:12px;padding-top:12px;font-size:13px">'
+      + "<p style=\"margin:0\">This is a read-only copy built from <code>" + esc((S.repo.sha || "").slice(0, 7)) + "</code>. A person decides from a checkout:</p>"
+      + '<ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px"><li>Run <code>python3 .cartographer/bin/guard.py --serve</code>.</li><li>Accept or reject each rule with a reason.</li><li>Commit and open one pull request. It is committed as you and opened with your GitHub login.</li><li>' + (S.repo.ruleOwners ? esc(S.repo.ruleOwners) + " reviews and merges it" : "The rules' code owner reviews and merges it") + "; then the rules are in force.</li></ol>"
+      + "<p class=\"small\" style=\"margin:0\">Agents cannot decide: their hooks refuse edits to the rule files and the commands that apply a decision.</p></div></aside>";
+  }
+
+  function dialogView() {
+    var d = ui.dialog;
+    return '<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-t"><header><h2 id="dlg-t">Commit and open pull request</h2></header><div class="body">'
+      + (ui.error ? '<div class="note note-bad" role="alert">' + esc(ui.error) + "</div>" : "")
+      + '<div style="display:flex;flex-direction:column;gap:4px"><label class="lab" for="branch">Branch</label><input id="branch" class="text mono" value="' + esc(d.branch) + '"' + (ui.busy ? " disabled" : "") + "></div>"
+      + '<div style="display:flex;flex-direction:column;gap:4px"><span class="lab">Title</span><div style="font-size:13px">' + esc(d.title) + "</div></div>"
+      + '<div style="display:flex;flex-direction:column;gap:4px"><span class="lab">Description</span><pre>' + esc(d.body) + "</pre></div>"
+      + '<div style="display:flex;flex-direction:column;gap:4px"><span class="lab">What will be committed</span><pre>' + esc(d.diff || "") + "</pre></div>"
+      + '<p class="small" style="margin:0">Only the two rule files are committed, from HEAD, as you (your git name and email). The rest of your checkout is untouched. Pushed and opened with your GitHub login' + (S.repo.ruleOwners ? "; reviewer " + esc(S.repo.ruleOwners) : "") + ".</p></div>"
+      + '<footer><button type="button" class="btn" data-act="cancel"' + (ui.busy ? " disabled" : "") + '>Cancel</button><button type="button" class="btn btn-primary" data-act="open"' + (ui.busy ? " disabled" : "") + ">" + (ui.busy ? "Committing and opening…" : "Open pull request") + "</button></footer></div></div>";
+  }
+
+  function otherView(v) {
+    var h = [];
+    if (v === "in-force") {
+      h.push('<h1 class="page-h">Guard rules in force</h1><p class="page-lede">From <code>.cartographer/guardrails.json</code>. guard.py checks them the same way every time; no model decides pass or fail.</p>');
+      if (!S.inForce.length) return h.join("") + '<div class="empty"><b>No guard rules in force</b>' + S.waiting.length + " proposed rule" + (S.waiting.length === 1 ? " waits" : "s wait") + ' under <a href="#waiting">Waiting</a>.</div>';
+      h.push('<div class="scroll-x"><table class="data"><thead><tr><th>Rule</th><th>Effect</th><th>What it requires</th><th>Enforced by</th><th>Decided</th></tr></thead><tbody>');
+      S.inForce.forEach(function (r) {
+        var d = r.decided || {};
+        h.push('<tr><td class="mono">' + esc(r.id) + "</td><td>" + badge(r.severity) + "</td><td>" + esc(r.description) + (r.fix ? '<div class="small">On failure: ' + esc(r.fix) + "</div>" : "") + "</td><td>" + esc(r.enforcedBy) + "</td><td>"
+          + (d.by || d.on ? esc([d.by, d.on].filter(Boolean).join(", ")) + (d.why ? '<div class="small">' + esc(d.why) + "</div>" : "") : '<span class="small">not recorded</span>') + "</td></tr>");
+      });
+      return h.join("") + "</tbody></table></div>";
+    }
+    if (v === "rejected") {
+      h.push('<h1 class="page-h">Rejected rules</h1><p class="page-lede">Remembered in <code>.cartographer/guardrails.proposed.json</code> so guard.py does not propose them again.</p>');
+      if (!S.rejected.length) return h.join("") + '<div class="empty"><b>No rejected rules</b></div>';
+      h.push('<table class="data"><thead><tr><th>Rule</th><th>Rejected</th><th>Why</th></tr></thead><tbody>');
+      S.rejected.forEach(function (r) { h.push('<tr><td class="mono">' + esc(r.id) + "</td><td>" + esc([r.by, r.on].filter(Boolean).join(", ")) + "</td><td>" + esc(r.why || "") + "</td></tr>"); });
+      return h.join("") + "</tbody></table>";
+    }
+    if (v === "exceptions") {
+      h.push('<h1 class="page-h">Exceptions</h1><p class="page-lede">An exception lets one file break one rule for a while. It needs a reason, a named approver and an expiry date; the fence fails when one expires.</p>');
+      if (!S.exceptions.length) return h.join("") + '<div class="empty"><b>No exceptions</b>Nothing in this repository is excused from a rule or a check.</div>';
+      h.push('<table class="data"><thead><tr><th>Exception</th><th>Where</th><th>Reason</th><th>Approved by</th><th>Expires</th></tr></thead><tbody>');
+      S.exceptions.forEach(function (x) { h.push("<tr><td>" + esc(x.kind) + ' <code>' + esc(x.name) + "</code></td><td><code>" + esc(x.where) + "</code></td><td>" + esc(x.reason) + "</td><td>" + esc(x.by) + "</td><td>" + esc(x.expires) + (x.expired ? ' <span class="b b-block">Expired</span>' : "") + "</td></tr>"); });
+      return h.join("") + "</tbody></table>";
+    }
+    if (v === "fence") {
+      h.push('<h1 class="page-h">Fence checks</h1>');
+      if (!S.hasFence) return h.join("") + '<div class="empty"><b>Not onboarded to the fence</b>There is no <code>.fence/fence.json</code> in this repository.</div>';
+      if (!S.checksListed) return h.join("") + '<div class="empty"><b>The checks are not listed</b><code>.fence/fence.json</code> does not list them: this repository’s fence defines them in its own code.</div>';
+      h.push('<p class="page-lede">From <code>.fence/fence.json</code>. Where a check has a fixer, the gardener runs it, runs every check again, and commits only if nothing that passed now fails. Any other failure is labelled for a person.</p>');
+      var withResult = S.checks.some(function (c) { return c.result; });
+      h.push('<div class="scroll-x"><table class="data"><thead><tr><th>Check</th><th>Category</th><th>What it requires</th><th>Tool</th><th>On failure</th>' + (withResult ? "<th>Last result</th>" : "") + "</tr></thead><tbody>");
+      S.checks.forEach(function (c) {
+        h.push('<tr><td class="mono">' + esc(c.id) + "</td><td>" + esc(c.category) + "</td><td>" + esc(c.title) + (c.note ? '<div class="small">' + esc(c.note) + "</div>" : "") + '</td><td><code style="font-size:12px;color:var(--muted);word-break:break-word">' + esc(c.tool) + "</code></td><td>"
+          + (c.fixer ? '<span class="b b-accept">Gardener fixes</span>' : '<span class="small">A person decides</span>') + "</td>" + (withResult ? "<td>" + esc(c.result) + "</td>" : "") + "</tr>");
+      });
+      h.push("</tbody></table></div>");
+      if (S.deps.length) {
+        h.push('<h2 class="page-h" style="font-size:15px;margin-top:24px">Approved dependencies</h2><table class="data"><thead><tr><th>Package</th><th>Reason</th><th>Approved by</th></tr></thead><tbody>');
+        S.deps.forEach(function (d) { h.push('<tr><td class="mono">' + esc(d.name) + "</td><td>" + esc(d.reason) + "</td><td>" + esc(d.by) + "</td></tr>"); });
+        h.push("</tbody></table>");
+      }
+      return h.join("");
+    }
+    if (v === "judgment") {
+      h.push('<h1 class="page-h">Checked by a person</h1><p class="page-lede">Rules no script can check, from <code>.cartographer/config.json</code>. A reviewer checks these on each pull request.</p><table class="data"><thead><tr><th>Rule</th><th>Why a person checks it</th></tr></thead><tbody>');
+      S.judgment.forEach(function (j) { h.push("<tr><td>" + esc(j.text) + "</td><td>" + esc(j.why) + "</td></tr>"); });
+      return h.join("") + "</tbody></table>";
+    }
+    if (v === "owners") {
+      h.push('<h1 class="page-h">Who approves changes to the rules</h1><p class="page-lede">From <code>' + esc(S.owners.file) + "</code>. With code owner review required in the branch settings, GitHub will not merge a change to these paths without one of these people.</p>");
+      if (!S.owners.rows.length) return h.join("") + '<div class="empty"><b>No owners for the rule files</b>Without CODEOWNERS entries, anyone with write access, an agent included, can change the rules in a pull request.</div>';
+      h.push('<table class="data"><thead><tr><th>Path</th><th>Owner</th></tr></thead><tbody>');
+      S.owners.rows.forEach(function (o) { h.push("<tr><td><code>" + esc(o.path) + "</code></td><td>" + esc(o.owners) + "</td></tr>"); });
+      return h.join("") + "</tbody></table>";
+    }
+    return '<h1 class="page-h">How it works</h1><p class="page-lede">The fence for this repository, drawn from its own files: where each check runs, what each part catches, how a rule changes, and what nothing checks.</p>' + S.howItWorks;
+  }
+
+  // ------------------------------------------------------------------ actions
+  function api(path, body) {
+    return fetch(path, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Rules": "1" }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "The workbench refused that."); return j; }); });
+  }
+  function apply(next) { S = next; }
+  function act(path, body, after) {
+    ui.busy = true; ui.error = ""; render();
+    return api(path, body).then(function (next) { apply(next); ui.busy = false; if (after) after(next); render(); })
+      .catch(function (err) { ui.busy = false; ui.error = err.message; render(); });
+  }
+  function nextUndecided(fromId) {
+    var list = shown(), i = list.map(function (x) { return x.id; }).indexOf(fromId);
+    for (var k = 1; k <= list.length; k++) { var x = list[(i + k) % list.length]; if (!x.pending && !x.pr) return x.id; }
+    return fromId;
+  }
+  function decide(d) {
+    var r = current(); if (!LOCAL || !r || r.pending || r.pr) return;
+    var why = (ui.why[r.id] || "").trim(); if (!why) { var t = $("#why"); if (t) t.focus(); return; }
+    act("/api/decide", { rule: r.id, decision: d, why: why }, function () { delete ui.why[r.id]; ui.done = null; ui.sel = nextUndecided(r.id); });
+  }
+  function openDialog() {
+    if (!LOCAL || !S.pending.length || ui.busy || ui.dialog) return;
+    api("/api/branch", {}).then(function (j) { ui.error = ""; ui.dialog = j.result; render(); var b = $("#branch"); if (b) b.focus(); })
+      .catch(function (err) { ui.error = err.message; render(); });
+  }
+  function move(step) {
+    var list = shown(); if (!list.length) return;
+    var i = list.map(function (x) { return x.id; }).indexOf(ui.sel);
+    ui.sel = list[Math.min(list.length - 1, Math.max(0, i + step))].id; render();
+    var b = document.querySelector('[data-pick="' + (window.CSS && CSS.escape ? CSS.escape(ui.sel) : ui.sel) + '"]'); if (b) b.focus();
+  }
+
+  document.addEventListener("click", function (ev) {
+    var t = ev.target.closest("[data-pick],[data-act],[data-undo],[data-copy]");
+    if (!t) return;
+    if (t.getAttribute("data-act") !== "discard") ui.confirmDiscard = false;
+    if (t.hasAttribute("data-pick")) { ui.sel = t.getAttribute("data-pick"); ui.error = ""; render(); return; }
+    if (t.hasAttribute("data-undo")) { act("/api/undo", { rule: t.getAttribute("data-undo") }); return; }
+    if (t.hasAttribute("data-copy")) {
+      var txt = document.getElementById(t.getAttribute("data-copy")).textContent;
+      var done = function () { t.textContent = "Copied"; setTimeout(function () { t.textContent = "Copy"; }, 1500); };
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, function () {}); return;
+    }
+    var a = t.getAttribute("data-act");
+    if (a === "accept" || a === "reject") decide(a);
+    else if (a === "dialog") openDialog();
+    else if (a === "discard") {
+      if (!ui.confirmDiscard) { ui.confirmDiscard = true; render(); return; }
+      ui.confirmDiscard = false; act("/api/discard", {}, function () { ui.done = null; });
+    }
+    else if (a === "cancel") { ui.dialog = null; ui.error = ""; render(); }
+    else if (a === "open") {
+      var branch = ($("#branch") || {}).value || ui.dialog.branch;
+      ui.dialog.branch = branch;
+      act("/api/pr", { branch: branch }, function (next) { ui.dialog = null; ui.done = next.result; });
+    }
+  });
+  document.addEventListener("input", function (ev) {
+    if (ev.target.id === "why") { var r = current(); if (r) { ui.why[r.id] = ev.target.value; var can = ev.target.value.trim() && !r.pending && !ui.busy;
+      document.querySelectorAll('[data-act="accept"],[data-act="reject"]').forEach(function (b) { b.disabled = !can; }); } }
+    else if (ev.target.id === "filter") { ui.filter = ev.target.value; render(); }
+    else if (ev.target.id === "branch" && ui.dialog) ui.dialog.branch = ev.target.value;
+  });
+  document.addEventListener("keydown", function (ev) {
+    var typing = /^(INPUT|TEXTAREA)$/.test((ev.target && ev.target.tagName) || "");
+    if (ev.key === "Escape" && ui.dialog && !ui.busy) { ui.dialog = null; ui.error = ""; render(); return; }
+    if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey) && ui.view === "waiting" && !ui.dialog) { ev.preventDefault(); openDialog(); return; }
+    if (typing || ui.dialog || ui.view !== "waiting" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (ev.key === "j" || ev.key === "ArrowDown") { ev.preventDefault(); move(1); }
+    else if (ev.key === "k" || ev.key === "ArrowUp") { ev.preventDefault(); move(-1); }
+    else if (ev.key === "a" || ev.key === "r") { ev.preventDefault(); decide(ev.key === "a" ? "accept" : "reject"); }
+    else if (ev.key === "/") { ev.preventDefault(); var f = $("#filter"); if (f) f.focus(); }
+  });
+  function route() {
+    var v = (location.hash || "").slice(1);
+    ui.view = VIEWS.some(function (x) { return x[0] === v; }) ? v : "waiting";
+    render();
+  }
+  window.addEventListener("hashchange", route);
+  if (!S) { document.getElementById("app").innerHTML = '<p style="padding:24px">No data: build this page with rules_app.py.</p>'; return; }
+  route();
+})();
+</script>
+</body>
+</html>

@@ -54,7 +54,7 @@ Skill changes affect every future agent in the repo. Show each proposed edit as 
 ## 5. Report
 
 A short list with no preamble:
-- **Proposed rules.** `id`: what it catches, with replay results. They wait for `guard.py --accept`.
+- **Proposed rules.** `id`: what it catches, with replay results. They wait for a person to decide them in the rules workbench (`guard.py --serve`).
 - **Tests added.** Path, and what they pin.
 - **Model fixes.** What changed and why.
 - **Skill edits.** Applied and awaiting approval, one line each.

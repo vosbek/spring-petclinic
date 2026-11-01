@@ -1418,28 +1418,44 @@ def propose(home, rules, by_id=None):
             rp = by_id[r["id"]].get("replay")
             if rp:
                 r["_replay"] = {k: rp.get(k) for k in ("replayable", "commits", "fired", "followedByFixOrRevert", "hitRatePct", "baseRatePct")}
+                head = git(os.path.dirname(home), "rev-parse", "--short=12", "HEAD", check=False)
+                if head:
+                    r["_replay"]["head"] = head.strip()
+                ex = [{k: x.get(k) for k in ("sha", "date", "subject", "outcome")} for x in (rp.get("examples") or [])[:5]]
+                if ex:
+                    r["_replay"]["examples"] = ex
         prop["rules"].append(r)
         n += 1
     carto.save(path, prop, pretty=True)
     return n
 
 
-def accept(home, accept_ids, reject_ids):
+def accept(home, accept_ids, reject_ids, why=None, by=None):
+    """Apply a person's decision. why and by are recorded with it: on the accepted rule as "decided", on the
+    rejected entry beside its date, together with the replay evidence the person saw."""
     ppath, gpath = os.path.join(home, "guardrails.proposed.json"), os.path.join(home, "guardrails.json")
     prop = carto.load(ppath) or {"schemaVersion": 1, "rules": []}
     cfg = carto.load(gpath) or {"schemaVersion": 1, "rules": [], "exceptions": []}
     keep, moved = [], []
     for r in prop["rules"]:
+        record = {k: v for k, v in (("by", by), ("on", dt.date.today().isoformat()), ("why", why), ("replay", r.get("_replay"))) if v}
         if r["id"] in accept_ids:
+            evidence = r.get("_replay")
             r = {k: v for k, v in r.items() if not k.startswith("_")}
             r["status"] = "active"
             r.setdefault("added", dt.date.today().isoformat())
+            if why or by:
+                r["decided"] = record
+            elif evidence:
+                r["decided"] = {"on": record["on"], "replay": evidence}
             cfg["rules"] = [x for x in cfg["rules"] if x["id"] != r["id"]] + [r]
             moved.append(r["id"])
         elif r["id"] in reject_ids:
-            # Remembered, so --suggest does not propose it again; the decision record is the pull request that removed it.
+            # Remembered, so --suggest does not propose it again; the pull request that removed it is the decision record.
             prop.setdefault("rejected", [])
-            prop["rejected"] = [x for x in prop["rejected"] if x.get("id") != r["id"]] + [{"id": r["id"], "rejected": dt.date.today().isoformat()}]
+            entry = {"id": r["id"], "rejected": record["on"]}
+            entry.update({k: v for k, v in record.items() if k in ("by", "why")})
+            prop["rejected"] = [x for x in prop["rejected"] if x.get("id") != r["id"]] + [entry]
         else:
             keep.append(r)
     prop["rules"] = keep
@@ -1477,7 +1493,8 @@ def run(repo, mode, base=None, head=None, refresh=False, model=None, log=True, s
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    # No abbreviations: --acc must not mean --accept, so a hook that refuses --accept cannot be talked around.
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False)
     ap.add_argument("--repo", default=".")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--staged", action="store_true")
@@ -1496,6 +1513,11 @@ def main():
     g.add_argument("--outcomes", metavar="HTML", help="write the outcomes report: what was blocked, what got through and the check we would build, what only a person can judge")
     g.add_argument("--accept", nargs="+", metavar="ID", help="move proposed rules into guardrails.json (a human decision)")
     g.add_argument("--reject", nargs="+", metavar="ID", help="drop proposed rules")
+    g.add_argument("--serve", action="store_true", help="open the rules workbench for this checkout (a person decides rules there)")
+    ap.add_argument("--why", help="with --accept/--reject: the person's reason, recorded with the decision")
+    ap.add_argument("--by", help="with --accept/--reject: who decided (recorded with the decision)")
+    ap.add_argument("--port", type=int, default=4340, help="with --serve: the local port (default 4340)")
+    ap.add_argument("--no-browser", action="store_true", help="with --serve: do not open a browser")
     ap.add_argument("--base", help="base ref (default: the default branch)")
     ap.add_argument("--rule", nargs="+", action="extend", help="limit --replay to these rule ids")
     ap.add_argument("--days", type=int, default=None, help="history window for --replay/--suggest (default historyDays or 365)")
@@ -1558,12 +1580,15 @@ def main():
             print("%-36s %-16s %-5s %s%s" % (r["id"], r["type"], r["severity"], c["why"], stat))
         if a.write and res["candidates"]:
             n = propose(home, [c["rule"] for c in res["candidates"]], {c["rule"]["id"]: c for c in res["candidates"]})
-            print("wrote %d proposal(s) to .cartographer/guardrails.proposed.json; accept with guard.py --accept ID" % n)
+            print("wrote %d proposal(s) to .cartographer/guardrails.proposed.json; a person decides them with guard.py --serve" % n)
         if a.json:
             carto.save(a.json, res, pretty=True)
         return 0
     if a.accept or a.reject:
-        return accept(home, a.accept or [], a.reject or [])
+        return accept(home, a.accept or [], a.reject or [], why=a.why, by=a.by)
+    if a.serve:
+        import rules_app
+        return rules_app.serve(repo, port=a.port, open_browser=not a.no_browser)
     if a.table:
         print(rule_table(Context(repo)))
         return 0

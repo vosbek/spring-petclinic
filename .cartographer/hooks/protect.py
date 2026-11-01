@@ -10,19 +10,30 @@ Edit/Write/MultiEdit/NotebookEdit are refused when
     Agents propose rules in guardrails.proposed.json; a human accepts them.
     Set CARTOGRAPHER_ALLOW_RULE_EDITS=1 for a session where a human is editing rules on purpose.
 Bash is refused when the command matches a `forbid-command` rule (for example running a publish
-command that only the curator may run).
+command that only the curator may run), and when it would decide a guard rule: guard.py --accept, --reject or
+--serve, rules_app.py serve, or a call to the rules workbench's API. Deciding rules is a person's job.
 
 Valid exceptions in guardrails.json (reason, expiry, approver) let the call through.
 Exit 2 with a message on stderr blocks the tool call and shows the message to the agent.
 """
 import json
 import os
+import re
 import sys
 import time
 
 T0 = time.time()
 
 SELF = {".cartographer/guardrails.json", ".cartographer/baseline.json"}
+# Commands that apply a decision on a guard rule, open the place where a person makes one, or write the rule files.
+# This stops an agent that follows its hooks; what binds is CODEOWNERS with code owner review required (see README).
+DECIDE = re.compile(
+    r"guard\.py\b[^\n;&|]*?\s['\"]?--(?:acc|rej|ser)"                  # --accept, --reject, --serve, quoted or not
+    r"|rules_app\b[^\n;&|]*\bserve\b"
+    r"|\bimport\s+(?:rules_app|guard)\b|\bfrom\s+(?:rules_app|guard)\s+import\b|__import__\(\s*['\"](?:rules_app|guard)['\"]"
+    r"|/api/(?:decide|undo|discard|pr|branch)\b"
+    r"|\b(?:guardrails|baseline)\.json\b",                                # any shell command naming the rule files
+    re.I)
 
 
 def added_lines(tool, ti):
@@ -75,8 +86,13 @@ def main():
         return 0
 
     if tool == "Bash":
-        ctx = guard.Context(root)
         cmd = ti.get("command") or ""
+        if DECIDE.search(cmd) and os.environ.get("CARTOGRAPHER_ALLOW_RULE_EDITS") != "1":
+            log(root, data, "command-hook", tool, cmd, "block", ["rule-decision"], "deciding a guard rule is a person's job")
+            return block("Blocked: accepting or rejecting a guard rule is a person's decision, and the rule files change only through it. "
+                         "Tell the user which proposals are waiting and ask them to decide in the rules workbench: "
+                         "python3 .cartographer/bin/guard.py --serve (in their own terminal). Read the rule files with the Read tool.")
+        ctx = guard.Context(root)
         n = sum(1 for r in ctx.rules if r.get("type") == "forbid-command")
         hits = [v for v in guard.check_command(ctx, cmd) if not guard.exempt(ctx, v, None)]
         if hits:
@@ -98,7 +114,7 @@ def main():
         log(root, data, "edit-hook", tool, rel, "block", ["guardrail-config"], "the guardrail configuration is changed only by a person")
         return block("Blocked: %s is the guardrail configuration and only a human changes it. "
                      "To add a rule, write it to .cartographer/guardrails.proposed.json (or run guard.py --suggest --write / learn.py --propose) "
-                     "and ask the user to accept it with guard.py --accept ID. To get past a rule for one change, "
+                     "and ask the user to decide it in the rules workbench (guard.py --serve). To get past a rule for one change, "
                      "ask the user for an exception (reason, expiry, approver)." % rel)
     ctx = guard.Context(root)
     n = sum(1 for r in ctx.rules if "edit" in guard.enforced_at(r) and r.get("type") != "forbid-command")
