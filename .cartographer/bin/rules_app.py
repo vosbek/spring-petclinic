@@ -122,23 +122,21 @@ def replayable(rule):
 
 
 def replay_text(rule):
-    """The proposal's replay against history in a sentence a reviewer can check against guard.py --replay."""
+    """The proposal's replay against history in one short sentence a reviewer can check against guard.py --replay."""
     rp = replay_of(rule)
     if not rp["any"]:
-        return f"Not replayed yet. guard.py --replay --rule {rule['id']} shows how often it would have fired."
+        return f"Not replayed yet. Run guard.py --replay --rule {rule['id']}."
     if not replayable(rule):
-        return "This kind of rule cannot be replayed against past commits; it applies from the day it is accepted."
+        return "Cannot be replayed on past commits. It applies from the day it is accepted."
     n, fired, bad, base = rp["commits"], rp["fired"], rp["followedByFixOrRevert"] or 0, rp["baseRatePct"]
     if fired == 0:
-        return f"It would not have fired on any of the last {n} commits, so accepting it costs nothing today."
-    s = f"It would have flagged {fired} of the last {n} commits. "
+        return f"Would not have fired on any of the last {n} commits."
     if bad == 0:
-        s += f"None of {'those' if fired > 1 else 'them'} was reverted or needed a fix to the same files within 14 days"
-        s += (f" (across all commits that happens {base}% of the time)" if base is not None else "")
-        return s + ", so today it would mostly flag changes that were fine."
-    s += f"{bad} of {'those' if fired > 1 else 'them'} {'were' if bad > 1 else 'was'} reverted or needed a fix within 14 days"
+        return ("The one commit it would have flagged did not need a fix afterwards." if fired == 1
+                else f"None of the {fired} commits it would have flagged needed a fix afterwards.")
+    s = f"{bad} of the {fired} commits it would have flagged needed a fix within 14 days"
     if rp["hitRatePct"] is not None and base is not None:
-        s += f" ({rp['hitRatePct']}%, against {base}% across all commits)"
+        s += f" ({rp['hitRatePct']}%, against {base}% for all commits)"
     return s + "."
 
 
@@ -147,11 +145,11 @@ def evidence_rows(rule):
     if not rp["any"]:
         return []
     if not replayable(rule):
-        return [["Replayable on past commits", "No"], ["Applies from", "The day it is accepted"]]
-    rows = [["Commits replayed", str(rp["commits"])], ["Commits it would have flagged", str(rp["fired"])]]
-    rows.append(["Of those, reverted or fixed within 14 days", str(rp["followedByFixOrRevert"] or 0) if rp["fired"] else "–"])
+        return [["Replayable on past commits", "No"]]
+    rows = [["Commits replayed", str(rp["commits"])], ["Would have flagged", str(rp["fired"])]]
+    rows.append(["Of those, fixed or reverted within 14 days", str(rp["followedByFixOrRevert"] or 0) if rp["fired"] else "\u2013"])
     if rp["baseRatePct"] is not None:
-        rows.append(["Reverted or fixed within 14 days, all commits", f"{rp['baseRatePct']}%"])
+        rows.append(["Fixed or reverted within 14 days, all commits", f"{rp['baseRatePct']}%"])
     return rows
 
 

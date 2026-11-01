@@ -81,7 +81,7 @@ When the user asks for the full rules, every instruction lands in one of the thr
 
 Show the user a table with one row per proposal: id, what it requires, replay result, and your recommendation. Then hand over the decision:
 
-> Open the rules workbench in your own terminal: `python3 .cartographer/bin/guard.py --serve`. Accept or reject each rule with a reason, then press "Commit and open pull request". The rules are in force once the code owner merges it.
+> Open the rules workbench in your own terminal: `python3 .cartographer/bin/guard.py --serve`. Accept or reject each rule with a reason, then press "Open pull request". The rules are in force once the code owner merges it.
 
 After that pull request merges:
 
