@@ -76,12 +76,7 @@ def load(path, default):
 
 
 def run(repo, *argv, env=None, input=None, timeout=60):
-    """Run a command and return its output as UTF-8 text, the same on every system. Bytes in and out: in text mode
-    Windows decodes git's output with the console code page (so "\u2192" in a rule's description comes back changed)
-    and turns "\\n" written to stdin into "\\r\\n", which would change the committed rule files."""
-    r = subprocess.run(list(argv), cwd=repo, capture_output=True, env=env, timeout=timeout,
-                       input=input.encode("utf-8") if isinstance(input, str) else input)
-    return subprocess.CompletedProcess(r.args, r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace"))
+    return subprocess.run(list(argv), cwd=repo, capture_output=True, text=True, env=env, input=input, timeout=timeout)
 
 
 def git(repo, *args, env=None):
@@ -185,16 +180,35 @@ def rule_owners(owner_rows):
     return ""
 
 
-def person_steps(repo):
+def onboarding_steps(repo):
+    """The (person) steps in ONBOARDING.md, done or not."""
     path = os.path.join(repo, "ONBOARDING.md")
     out = []
     if os.path.exists(path):
         with open(path, encoding="utf-8") as f:
             for line in f:
-                m = re.match(r"\s*-\s*\[ \]\s*\(person\)\s*(.+)", line)
+                m = re.match(r"\s*-\s*\[([ xX])\]\s*\(person\)\s*(.+)", line)
                 if m:
-                    out.append(m.group(1).strip())
+                    out.append({"text": m.group(2).strip(), "done": m.group(1).lower() == "x"})
     return out
+
+
+def person_steps(repo):
+    return [s["text"] for s in onboarding_steps(repo) if not s["done"]]
+
+
+def provenance(repo, proposals):
+    """Where the proposed rules came from: the map they were read from, when they were suggested, how far back they were tested."""
+    model = load(os.path.join(repo, ".cartographer", "model", "model.json"), {})
+    gen = model.get("generated") if isinstance(model.get("generated"), dict) else {}
+    layers = [l for l in model.get("layers", []) if isinstance(l, dict) and l.get("id") != "external"]
+    days = sorted(r.get("added") for r in proposals if isinstance(r.get("added"), str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", r.get("added", "")))
+    commits = [replay_of(r)["commits"] for r in proposals if replayable(r)]
+    return {"components": len(model.get("components", [])), "layers": len(layers),
+            "layerNames": [str(l.get("name") or l.get("id")) for l in layers],
+            "mapOn": str(gen.get("at", ""))[:10], "suggestedOn": days[0] if days else "", "count": len(proposals),
+            "learned": sum(1 for r in proposals if r.get("source") == "learned"),
+            "commits": max(commits) if commits else 0}
 
 
 def cmd_text(argv):
@@ -361,7 +375,7 @@ def state(repo, fence_report=None, waiting=None, repo_url=None, local=False):
         rp = replay_of(r)
         waiting_rules.append({
             "id": r["id"], "type": r.get("type"), "severity": severity(r), "description": r.get("description") or r.get("type"),
-            "why": r.get("_why") or "", "added": r.get("added", ""), "source": r.get("source", ""),
+            "why": r.get("_why") or "", "stops": r.get("_stops") or "", "added": r.get("added", ""), "source": r.get("source", ""),
             "replayable": replayable(r), "fired": rp["fired"] if replayable(r) else None, "commits": rp["commits"] if replayable(r) else None,
             "replayHead": rp["head"], "evidence": evidence_rows(r), "reading": replay_text(r), "examples": rp["examples"],
             "enforcedBy": "A note on the pull request" if severity(r) == "info" else guard.enforced_label(r),
@@ -432,6 +446,8 @@ def state(repo, fence_report=None, waiting=None, repo_url=None, local=False):
         "judgment": [{"text": j.get("text", ""), "why": j.get("why", "")} for j in config.get("judgment", [])],
         "owners": {"file": owners_file or ".github/CODEOWNERS", "rows": owners},
         "personSteps": person_steps(repo),
+        "setup": onboarding_steps(repo),
+        "provenance": provenance(repo, prop_rules),
         "waitingPrs": waiting_prs,
         "howItWorks": rules_model.section(model, simple_table, None),
         "sources": [s for s in sources if os.path.exists(os.path.join(repo, s))],
