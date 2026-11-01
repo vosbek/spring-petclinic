@@ -76,7 +76,12 @@ def load(path, default):
 
 
 def run(repo, *argv, env=None, input=None, timeout=60):
-    return subprocess.run(list(argv), cwd=repo, capture_output=True, text=True, env=env, input=input, timeout=timeout)
+    """Run a command and return its output as UTF-8 text, the same on every system. Bytes in and out: in text mode
+    Windows decodes git's output with the console code page (so "\u2192" in a rule's description comes back changed)
+    and turns "\\n" written to stdin into "\\r\\n", which would change the committed rule files."""
+    r = subprocess.run(list(argv), cwd=repo, capture_output=True, env=env, timeout=timeout,
+                       input=input.encode("utf-8") if isinstance(input, str) else input)
+    return subprocess.CompletedProcess(r.args, r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace"))
 
 
 def git(repo, *args, env=None):
