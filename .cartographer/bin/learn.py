@@ -271,7 +271,7 @@ def main():
                 rp = guard.replay(ctx, [r], days, a.max_commits, history=history)["rules"][0]
                 rules.append((r, {"why": "%d %s occurrences: %s" % (cls["occurrences"], cls["kind"], cls["examples"][0]["detail"]), "replay": rp}))
         n = guard.propose(ctx.home, [r for r, _ in rules], {r["id"]: meta for r, meta in rules})
-        print("proposed %d rule(s) in .cartographer/guardrails.proposed.json (guard.py --proposals; a human accepts with --accept)" % n)
+        print("proposed %d rule(s) in .cartographer/guardrails.proposed.json (guard.py --proposals; a person decides them with guard.py --serve)" % n)
     print("wrote %s" % os.path.join(ctx.home, "facts", "lessons.json"))
     return 0
 

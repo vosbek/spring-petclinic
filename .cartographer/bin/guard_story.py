@@ -252,7 +252,7 @@ def story(ctx, out_path):
         ("Find the cause", ["cartograph-learn finds", "the commit that", "caused it"], "info"),
         ("Write the check", ["A rule, a test or a", "verifier check, at the", "highest level that", "works"], "info"),
         ("Prove it", ["Fires at the cause,", "quiet after the fix,", "clean today, rare", "elsewhere"], "machine"),
-        ("A person decides", ["guard.py --accept or", "--reject; exceptions", "need a reason, expiry", "and approver"], "person"),
+        ("A person decides", ["in the rules workbench", "(guard.py --serve);", "exceptions need a reason,", "expiry and approver"], "person"),
         ("In force", ["Runs in the hooks,", "pre-commit and CI", "on every change"], "machine"),
     ]
     S.append('<section class="sec"><div class="lead"><span class="num">1.3</span><h2>How the checks get better</h2>'

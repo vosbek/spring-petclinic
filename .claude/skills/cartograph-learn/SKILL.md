@@ -87,9 +87,8 @@ Present one row per class:
 - the proof (replay counts, or test fail-then-pass)
 - what is waiting for approval
 
-After approval:
+The person decides in the rules workbench (`python3 .cartographer/bin/guard.py --serve`, in their own terminal; the agent hooks refuse it from you). After their pull request merges:
 ```bash
-python3 .cartographer/bin/guard.py --accept <ids>
 python3 .cartographer/bin/guard.py --table
 ```
 Update the rule table in CLAUDE.md / AGENTS.md from the `--table` output.

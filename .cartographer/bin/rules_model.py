@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The "How it works" tab of the rules page: a mental model of the fence for this repository.
+"""The "How it works" view of the rules workbench: a mental model of the fence for this repository.
 
 Four parts, each drawn from the repository's own files (no numbers are typed in):
   1. Where each check runs: the agent's machine, GitHub Actions, the private hidden-tests repository, a person;
@@ -7,7 +7,7 @@ Four parts, each drawn from the repository's own files (no numbers are typed in)
   2. What each part catches, by kind of problem, with the checks this repository actually runs.
   3. How a rule changes: proposed, replayed on history, decided, reviewed, in force; and how exceptions work.
   4. What nothing here checks.
-The diagrams are inline SVG styled with Carbon's color tokens, so they follow the light and dark themes.
+The diagrams are inline SVG; the workbench page (toolkit/viewer/rules-app.html) styles their classes.
 """
 from __future__ import annotations
 
@@ -113,8 +113,8 @@ def how_rules_change(d):
     commits = d["replay_commits"]
     stages = [(["Proposed", "by an agent, or guard.py", "--suggest from the map", "and history (nightly)"], "box"),
               (["Replayed on history", f"each proposal runs over the", f"last {commits} commits:" if commits else "repository's commits:", "would it have fired?"], "box"),
-              (["Accept or Reject", "a person presses one on", "this page and says why", "(a GitHub issue)"], "person"),
-              (["Pull request", "a workflow applies it;", "the code owner reviews", "and merges"], "person"),
+              (["Accept or Reject", "a person decides in the", "rules workbench from", "their checkout, with why"], "person"),
+              (["Pull request", "committed as that person;", "the code owner reviews", "and merges"], "person"),
               (["In force", "edit hook, Stop hook,", "pre-commit and CI all", "check it on every change"], "decide")]
     B = []
     for i, (lines, kind) in enumerate(stages):
@@ -182,20 +182,3 @@ def section(d, table, tag):
             + how_rules_change(d) + "</div>"
             + not_covered(d))
 
-
-CSS = """
-.sf-block{margin-bottom:2.5rem}.sf-h2{font-size:1.25rem;line-height:1.4;font-weight:400;margin:0 0 .5rem}
-.sf-lede{font-size:.875rem;line-height:1.43;color:var(--cds-text-secondary);max-width:48rem;margin:0 0 1rem}
-.sf-cap{font-size:.75rem;color:var(--cds-text-secondary);margin:.5rem 0 0}@media (min-width:72rem){.sf-cap{display:none}}
-.sf-diagram{overflow-x:auto;background:var(--cds-layer-01);padding:1rem}.sf-diagram svg{display:block;max-width:none}
-@media (min-width:72rem){.sf-diagram svg{width:100%;height:auto}}
-.sf-d-lane{fill:var(--cds-layer-02)}.sf-d-col{font-size:13px;font-weight:600;fill:var(--cds-text-secondary)}
-.sf-d-box{fill:var(--cds-layer-01);stroke:var(--cds-border-strong-01);stroke-width:1}
-.sf-d-box--decide{fill:var(--cds-interactive);stroke:var(--cds-interactive)}
-.sf-d-box--person{fill:var(--cds-layer-01);stroke:var(--cds-text-primary);stroke-width:2}
-.sf-d-t{font-size:12.5px;fill:var(--cds-text-primary)}.sf-d-tb{font-size:13px;font-weight:600;fill:var(--cds-text-primary)}
-.sf-d-t--on{fill:var(--cds-text-on-color)}.sf-d-muted{fill:var(--cds-text-secondary)}
-.sf-d-label{font-size:12px;fill:var(--cds-text-secondary)}
-.sf-d-arrow{fill:none;stroke:var(--cds-text-secondary);stroke-width:1.4}.sf-d-arrow--dashed{stroke-dasharray:5 4}.sf-d-head{fill:var(--cds-text-secondary)}
-.sf-list{margin:0;padding-left:1.25rem;font-size:.875rem;line-height:1.6;max-width:56rem}.sf-list li{list-style:disc;margin-bottom:.25rem}
-"""

@@ -688,7 +688,7 @@ def outcomes_report(ctx, out_path):
             ": the rule is in force and blocks every change until then" if m.get("ruleState") == "active" else ", then accept the rule"))
     pending = [x for x in missed + gaps if x.get("status") == "proposed" and x.get("rule") is not None and x.get("ruleState") == "proposed"]
     if pending:
-        dec.append("<li>Accept the proposed rules: <code>python3 .cartographer/bin/guard.py --accept %s</code></li>" % E(" ".join(x["rule"]["id"] for x in pending)))
+        dec.append("<li>Decide the proposed rules (%s) in the rules workbench: <code>python3 .cartographer/bin/guard.py --serve</code></li>" % E(", ".join(x["rule"]["id"] for x in pending)))
     other = [x for x in missed + gaps if x.get("status") == "proposed" and x.get("rule") is None]
     if other:
         dec.append("<li>Build the %d checks that are not rules: %s.</li>" % (len(other), "; ".join(E(x["title"].lower()) for x in other)))

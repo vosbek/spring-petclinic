@@ -15,7 +15,7 @@ Arguments: `$ARGUMENTS`
 1. **Map the codebase.** Run `/cartograph-survey`. For a large repository, map the area named in the
    arguments first, at the depth a change there needs, and say which areas the map does not cover yet.
 2. **Guardrails from the map.** Run `/cartograph-guard`: proposed rules go to
-   `.cartographer/guardrails.proposed.json`, each replayed against history. A person accepts them.
+   `.cartographer/guardrails.proposed.json`, each replayed against history. A person decides them in the rules workbench (`python3 .cartographer/bin/guard.py --serve`, in their own terminal); the agent hooks refuse it from you.
 3. **Review the fence.** Read `.fence/fence.json` and `docs/code-style.md`. Run
    `node .fence/bin/fence.mjs` on a clean branch: every check should pass or skip with a reason. A check
    that fails on an unchanged branch is configured wrong; fix the configuration, never the code, and
