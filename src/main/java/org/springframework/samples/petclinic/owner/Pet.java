@@ -69,8 +69,8 @@ public class Pet extends NamedEntity {
 	}
 
 	/**
-	 * The pet's age on a day, in whole years. A year counts on the birthday itself; a
-	 * pet born on 29 February has its birthday on 1 March in other years.
+	 * The pet's age on a day, in whole years. A year counts on the birthday itself; a pet
+	 * born on 29 February has its birthday on 1 March in other years.
 	 * @param day the day to measure on
 	 * @return the age in whole years, or {@code null} when the birth date is not known
 	 */
