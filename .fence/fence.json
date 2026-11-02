@@ -26,7 +26,8 @@
         "test-compile"
       ],
       "parse": "exit",
-      "hint": "Fix the compile errors above."
+      "hint": "Fix the compile errors above.",
+      "explain": "Code that does not build"
     },
     {
       "id": "format",
@@ -40,7 +41,8 @@
         "spring-javaformat:validate"
       ],
       "parse": "exit",
-      "hint": "./mvnw -B -ntp -q spring-javaformat:apply (the gardener does this)"
+      "hint": "./mvnw -B -ntp -q spring-javaformat:apply (the gardener does this)",
+      "explain": "Formatting drift from Spring Java Format"
     },
     {
       "id": "checkstyle",
@@ -54,7 +56,8 @@
         "checkstyle:check@nohttp-checkstyle-validation"
       ],
       "parse": "exit",
-      "hint": "Fix the Checkstyle findings above."
+      "hint": "Fix the Checkstyle findings above.",
+      "explain": "The repository's own Checkstyle rules (no http:// links)"
     },
     {
       "id": "unit",
@@ -67,10 +70,33 @@
         "-q",
         "-Dspring-javaformat.skip=true",
         "-Dcheckstyle.skip=true",
-        "test"
+        "test",
+        "jacoco:report"
       ],
       "parse": "exit",
-      "hint": "Fix the failing tests."
+      "hint": "Fix the failing tests.",
+      "explain": "Behaviour the existing and new tests describe",
+      "results": "target/surefire-reports/",
+      "coverage": "target/site/jacoco/jacoco.xml"
+    },
+    {
+      "id": "mutation",
+      "category": "tests",
+      "title": "Tests notice small changes to the changed lines (PIT)",
+      "run": [
+        "node",
+        ".fence/bin/java-mutation.mjs",
+        "maven",
+        "{base}",
+        "-Dspring-javaformat.skip=true",
+        "-Dcheckstyle.skip=true"
+      ],
+      "parse": "exit",
+      "files": "changed",
+      "glob": "**/src/main/java/**/*.java",
+      "mutations": "target/pit-reports/mutations.xml",
+      "explain": "Tests that run the changed code but would pass whatever it did",
+      "hint": "Add an assertion that fails when the line reported above behaves differently."
     }
   ],
   "lintCategories": {
@@ -136,5 +162,7 @@
         "--fix-lines"
       ]
     ]
-  }
+  },
+  "guardMayBeEmpty": true,
+  "$guardMayBeEmpty": "Set while onboarding: no rule is accepted yet. Remove it once a person accepts rules in the rules workbench."
 }

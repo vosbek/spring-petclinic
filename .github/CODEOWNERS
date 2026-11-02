@@ -8,3 +8,13 @@
 /.cartographer/guardrails.json @vosbek
 /.cartographer/baseline.json @vosbek
 /.cartographer/hooks/ @vosbek
+
+# Software factory: a person approves every change to the gate (fence, workflows, rules, map, agent settings).
+/.github/workflows/ @vosbek
+/.github/CODEOWNERS @vosbek
+/.cartographer/bin/ @vosbek
+/.cartographer/model/ @vosbek
+/.claude/ @vosbek
+/.agents/ @vosbek
+/verification/ @vosbek
+**/approvals.json @vosbek

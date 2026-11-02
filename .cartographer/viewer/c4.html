@@ -1,0 +1,703 @@
+<title>__C4_TITLE__</title>
+<style>
+:root{
+  --bg:#eef1f5; --panel:#ffffff; --panel-2:#f7f8fa; --ink:#141a26; --ink-2:#384152; --muted:#646d80; --line:#dfe3ea; --line-2:#c6cdd8;
+  --bar:#0a2753; --bar-ink:#ffffff; --bar-muted:#a9bbdc; --bar-line:#1d3a6b;
+  --blue:#0047bb; --blue-ink:#0047bb; --blue-tint:#e8eefb; --blue-line:#a8bee6;
+  --person:#0a2753; --agent:#33415c; --system:#0047bb; --on-dark:#ffffff; --on-dark-2:#cbd7ef;
+  --cont-fill:#ffffff; --cont-line:#0047bb; --comp-fill:#ffffff; --comp-line:#9fb5dd;
+  --ext-fill:#e9ecf1; --ext-line:#aeb6c3; --ext-ink:#384152; --ext-ink-2:#5c6578;
+  --edge:#8089a0; --edge-label:#4b5466; --canvas:#f8f9fb; --dot:#dde2ea; --bnd:#b9c2d0;
+  --hl:#0047bb; --now:#c25e00; --good:#17663a; --good-tint:#e5f2e9; --good-line:#b9dcc5;
+  --chip:#f0f2f6; --shadow:0 1px 2px rgba(15,23,42,.06),0 2px 6px rgba(15,23,42,.06);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c111b; --panel:#141b27; --panel-2:#18202e; --ink:#e6eaf1; --ink-2:#c2c9d6; --muted:#8d97a9; --line:#252e3e; --line-2:#334058;
+  --bar:#0a1833; --bar-ink:#eef2f9; --bar-muted:#8ea3c8; --bar-line:#1b2c4f;
+  --blue:#4f86ee; --blue-ink:#8db0f6; --blue-tint:#18264a; --blue-line:#334f86;
+  --person:#25467f; --agent:#3a4964; --system:#2e62c8; --on-dark:#ffffff; --on-dark-2:#c7d4ee;
+  --cont-fill:#151e2e; --cont-line:#4f86ee; --comp-fill:#151e2e; --comp-line:#3b5385;
+  --ext-fill:#1f2735; --ext-line:#3f4b61; --ext-ink:#cfd5df; --ext-ink-2:#98a2b4;
+  --edge:#78839a; --edge-label:#aab3c2; --canvas:#101722; --dot:#1d2636; --bnd:#3a465c;
+  --hl:#6d9cf3; --now:#f0a04b; --good:#79c896; --good-tint:#13281b; --good-line:#25502f;
+  --chip:#1c2433; --shadow:0 1px 2px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c111b; --panel:#141b27; --panel-2:#18202e; --ink:#e6eaf1; --ink-2:#c2c9d6; --muted:#8d97a9; --line:#252e3e; --line-2:#334058;
+  --bar:#0a1833; --bar-ink:#eef2f9; --bar-muted:#8ea3c8; --bar-line:#1b2c4f;
+  --blue:#4f86ee; --blue-ink:#8db0f6; --blue-tint:#18264a; --blue-line:#334f86;
+  --person:#25467f; --agent:#3a4964; --system:#2e62c8; --on-dark:#ffffff; --on-dark-2:#c7d4ee;
+  --cont-fill:#151e2e; --cont-line:#4f86ee; --comp-fill:#151e2e; --comp-line:#3b5385;
+  --ext-fill:#1f2735; --ext-line:#3f4b61; --ext-ink:#cfd5df; --ext-ink-2:#98a2b4;
+  --edge:#78839a; --edge-label:#aab3c2; --canvas:#101722; --dot:#1d2636; --bnd:#3a465c;
+  --hl:#6d9cf3; --now:#f0a04b; --good:#79c896; --good-tint:#13281b; --good-line:#25502f;
+  --chip:#1c2433; --shadow:0 1px 2px rgba(0,0,0,.3),0 2px 6px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+code,.mono{font-family:"Cascadia Mono","Cascadia Code",Consolas,"SF Mono",ui-monospace,Menlo,monospace;font-size:12px}
+a{color:var(--blue-ink)}
+#app{display:grid;grid-template-columns:244px minmax(0,1fr) 340px;grid-template-rows:48px minmax(0,1fr) 26px;height:100vh;height:100dvh}
+
+/* title bar */
+.bar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 14px 0 16px;background:var(--bar);color:var(--bar-ink);border-bottom:1px solid var(--bar-line);min-width:0}
+.mark{width:22px;height:22px;flex:none}
+.brand{font-weight:600;font-size:14px;white-space:nowrap}
+.sep{width:1px;height:18px;background:var(--bar-line)}
+.crumbs{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;white-space:nowrap;font-size:13px}
+.crumbs button{background:none;border:0;color:var(--bar-muted);padding:3px 6px;border-radius:4px;cursor:pointer}
+.crumbs button:hover{background:var(--bar-line);color:var(--bar-ink)}
+.crumbs .here{color:var(--bar-ink);padding:3px 6px}
+.crumbs .gt{color:var(--bar-muted);opacity:.7}
+.bar .grow{flex:1}
+.bar .src{font-size:12px;color:var(--bar-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%}
+
+/* rail */
+.rail{background:var(--panel);border-right:1px solid var(--line);overflow:auto;display:flex;flex-direction:column;min-height:0}
+.rail h4{margin:16px 16px 6px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.nav{display:flex;flex-direction:column;padding:0 8px;gap:1px}
+.nav button{display:grid;grid-template-columns:30px 1fr;align-items:center;gap:8px;text-align:left;background:none;border:0;border-radius:6px;padding:7px 8px;cursor:pointer;position:relative}
+.nav button:hover{background:var(--panel-2)}
+.nav button[aria-current="true"]{background:var(--blue-tint)}
+.nav button[aria-current="true"]::before{content:"";position:absolute;left:-8px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--blue)}
+.lv{font:600 10.5px/1 "Cascadia Mono",Consolas,ui-monospace,monospace;color:var(--blue-ink);background:var(--chip);border:1px solid var(--line);border-radius:4px;padding:4px 0;text-align:center}
+.nav button[aria-current="true"] .lv{background:var(--panel);border-color:var(--blue-line)}
+.nav .t{font-size:13.5px;font-weight:550;line-height:1.25;color:var(--ink)}
+.nav .s{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:1px}
+.legend{margin-top:auto;padding:14px 16px 16px;border-top:1px solid var(--line);display:grid;gap:7px}
+.legend h4{margin:0 0 3px}
+.lg{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-2)}
+.lg.off{opacity:.38}
+.sw{width:18px;height:12px;border-radius:3px;flex:none;display:inline-block}
+.k-person{background:var(--person)}.k-agent{background:var(--agent)}.k-system{background:var(--system)}
+.k-container{background:var(--cont-fill);border:1.5px solid var(--cont-line)}
+.k-component{background:var(--comp-fill);border:1px solid var(--comp-line)}
+.k-external{background:var(--ext-fill);border:1px solid var(--ext-line)}
+.k-boundary{border:1.5px dashed var(--bnd);background:transparent}
+
+/* centre */
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.vhead{padding:16px 22px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--blue-ink)}
+.vhead h1{margin:3px 0 4px;font-size:19px;line-height:1.25;font-weight:600;text-wrap:balance}
+.vhead p{margin:0;color:var(--ink-2);max-width:86ch;font-size:13.5px}
+.stage{position:relative;flex:1;min-height:0;background-color:var(--canvas);background-image:radial-gradient(var(--dot) 1px,transparent 1.2px);background-size:22px 22px;overflow:hidden}
+#svg{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;user-select:none}
+#svg.panning{cursor:grabbing}
+.tools{position:absolute;top:12px;right:12px;display:flex;background:var(--panel);border:1px solid var(--line);border-radius:7px;box-shadow:var(--shadow);overflow:hidden}
+.tools button{width:34px;height:32px;display:grid;place-items:center;background:none;border:0;cursor:pointer;color:var(--ink-2)}
+.tools button+button{border-left:1px solid var(--line)}
+.tools button:hover{background:var(--panel-2);color:var(--ink)}
+.hint{position:absolute;left:14px;top:12px;font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 9px;box-shadow:var(--shadow)}
+
+/* journey bar */
+.jbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:min(760px,calc(100% - 32px));background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.12),var(--shadow);padding:12px 14px 12px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.jnum{font:600 12px/1 "Cascadia Mono",Consolas,ui-monospace,monospace;color:var(--muted);white-space:nowrap}
+.jnum b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--now);color:#fff;font-size:12.5px;margin-right:8px;vertical-align:middle}
+.jtext{font-size:14px;line-height:1.45;color:var(--ink);min-width:0}
+.jctl{display:flex;gap:6px}
+.jctl button{height:32px;min-width:32px;padding:0 10px;border:1px solid var(--line-2);background:var(--panel);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.jctl button:hover:not(:disabled){background:var(--panel-2)}
+.jctl button:disabled{opacity:.4;cursor:default}
+.jctl .go{background:var(--blue);border-color:var(--blue);color:#fff}
+.jctl .go:hover:not(:disabled){background:var(--blue);filter:brightness(1.08)}
+.jprog{grid-column:1/-1;display:flex;gap:4px}
+.jprog button{flex:1;height:4px;border:0;border-radius:2px;background:var(--line);padding:0;cursor:pointer}
+.jprog button.done{background:var(--blue-line)}
+.jprog button.cur{background:var(--now)}
+
+/* inspector */
+.insp{background:var(--panel);border-left:1px solid var(--line);overflow:auto;min-height:0}
+.ihead{padding:16px 18px 14px;border-bottom:1px solid var(--line)}
+.ikind{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ihead h2{margin:6px 0 2px;font-size:18px;line-height:1.25;font-weight:600}
+.itech{font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.isec{padding:14px 18px;border-bottom:1px solid var(--line)}
+.isec h3{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.isec p{margin:0;color:var(--ink-2)}
+.isec p+p{margin-top:6px}
+.lead{color:var(--ink)!important;font-size:14px}
+.ev{margin:0;background:var(--good-tint);border:1px solid var(--good-line);border-radius:7px;padding:10px 12px;color:var(--ink)!important;font-size:13px}
+.ev b{display:block;color:var(--good);font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px}
+.rels,.files,.els,.steps{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.rels li{display:grid;grid-template-columns:18px auto 1fr;gap:6px;align-items:baseline;font-size:13px}
+.rels .d{color:var(--muted)}
+.rels .l{color:var(--muted);font-size:12.5px}
+.link{background:none;border:0;padding:0;color:var(--blue-ink);cursor:pointer;text-align:left;font-weight:550}
+.link:hover{text-decoration:underline}
+.files li{font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;font-size:12px;word-break:break-all;color:var(--ink-2)}
+.files a{text-decoration:none}.files a:hover{text-decoration:underline}
+.note{font-size:12px;color:var(--muted)!important;margin-top:8px!important}
+.primary{width:100%;margin-top:2px;height:36px;border:0;border-radius:7px;background:var(--blue);color:#fff;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.primary:hover{filter:brightness(1.08)}
+.ask{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:6px 6px 6px 10px}
+.ask code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.ask button{border:1px solid var(--line-2);background:var(--panel);border-radius:5px;height:28px;padding:0 10px;cursor:pointer;font-size:12.5px}
+.els{grid-template-columns:1fr}
+.els li button{display:flex;align-items:center;gap:9px;width:100%;background:none;border:0;border-radius:6px;padding:5px 6px;cursor:pointer;text-align:left;font-size:13.5px}
+.els li button:hover{background:var(--panel-2)}
+.els .x{margin-left:auto;color:var(--muted);font-size:12px}
+.steps{counter-reset:s;gap:2px}
+.steps li button{display:grid;grid-template-columns:24px 1fr;gap:10px;width:100%;background:none;border:0;border-radius:7px;padding:8px;text-align:left;cursor:pointer;font-size:13px;line-height:1.4;color:var(--ink-2)}
+.steps li button:hover{background:var(--panel-2)}
+.steps .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11.5px;font-weight:700;background:var(--chip);color:var(--muted);border:1px solid var(--line)}
+.steps li.done .n{background:var(--blue-tint);color:var(--blue-ink);border-color:var(--blue-line)}
+.steps li.cur button{background:var(--blue-tint);color:var(--ink)}
+.steps li.cur .n{background:var(--now);border-color:var(--now);color:#fff}
+.back{background:none;border:0;color:var(--blue-ink);cursor:pointer;padding:0;font-size:12.5px;margin-bottom:8px}
+.tip{font-size:12.5px;color:var(--muted)}
+.tip kbd{font:11px "Cascadia Mono",Consolas,monospace;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel)}
+
+/* status bar */
+.status{grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:0 14px;font-size:11.5px;color:var(--muted);background:var(--panel);border-top:1px solid var(--line);white-space:nowrap;overflow:hidden}
+.status .grow{flex:1}
+.status .ok{color:var(--good)}
+
+/* diagram */
+.node{cursor:pointer;transition:opacity .18s}
+.node:focus{outline:none}
+.node .box{transition:filter .15s}
+.node:hover .box{filter:drop-shadow(0 3px 6px rgba(15,23,42,.18))}
+.node .ring{fill:none;stroke:var(--hl);stroke-width:2.5;opacity:0;transition:opacity .15s}
+.node.sel .ring,.node:focus-visible .ring{opacity:1}
+.node.now .ring{opacity:1;stroke:var(--now);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{stroke-width:5;stroke-opacity:.45}}
+.k-person .box,.k-person .head{fill:var(--person)}
+.k-agent .box,.k-agent .head{fill:var(--agent)}
+.k-system .box{fill:var(--system)}
+.k-container .box{fill:var(--cont-fill);stroke:var(--cont-line);stroke-width:1.6}
+.k-container .strip{fill:var(--cont-line)}
+.k-component .box{fill:var(--comp-fill);stroke:var(--comp-line);stroke-width:1.1}
+.k-external .box{fill:var(--ext-fill);stroke:var(--ext-line);stroke-width:1.1}
+.head{stroke:var(--canvas);stroke-width:3}
+.nm{font-weight:600;font-size:14px;fill:var(--ink)}
+.tc{font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;font-size:10.5px;fill:var(--muted)}
+.sh{font-size:12px;fill:var(--ink-2)}
+.k-person .nm,.k-agent .nm,.k-system .nm{fill:var(--on-dark)}
+.k-person .tc,.k-agent .tc,.k-system .tc,.k-person .sh,.k-agent .sh,.k-system .sh{fill:var(--on-dark-2)}
+.k-external .nm{fill:var(--ext-ink)}.k-external .sh,.k-external .tc{fill:var(--ext-ink-2)}
+.k-component .nm{font-size:13px}.k-component .sh{font-size:11.5px}
+.zm circle{fill:var(--panel);stroke:var(--blue-line)}
+.zm path{stroke:var(--blue-ink);stroke-width:1.6;fill:none;stroke-linecap:round}
+.k-system .zm circle{fill:rgba(255,255,255,.16);stroke:rgba(255,255,255,.5)}.k-system .zm path{stroke:#fff}
+.edge{transition:opacity .18s}
+.edge .ln{stroke:var(--edge);stroke-width:1.4;fill:none}
+.edge .hit{stroke:transparent;stroke-width:12;fill:none}
+.lbl rect{fill:var(--canvas);opacity:.94}
+.lbl text{font-size:11.5px;fill:var(--edge-label)}
+.edge.on .ln{stroke:var(--hl);stroke-width:2.2}
+.edge.on .lbl text{fill:var(--ink);font-weight:550}
+.edge.now .ln{stroke:var(--now);stroke-width:2.6;stroke-dasharray:8 6;animation:flow .7s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-14}}
+.ghost .ln{stroke-dasharray:3 4}
+.mk{fill:var(--edge)}.mk-on{fill:var(--hl)}.mk-now{fill:var(--now)}
+.bnd rect{fill:none;stroke:var(--bnd);stroke-width:1.4;stroke-dasharray:7 5}
+.bnd text{font-size:12px;font-weight:600;fill:var(--muted)}
+.badge circle{fill:var(--hl);stroke:var(--canvas);stroke-width:2.5}
+.badge.now circle{fill:var(--now)}
+.badge text{fill:#fff;font-size:11.5px;font-weight:700}
+.focus .node:not(.on),.focus .edge:not(.on),.focus .lbl:not(.on){opacity:.2}
+.focus .bnd{opacity:.55}
+.labels-hover .lbl{opacity:0;transition:opacity .15s}.labels-hover .lbl.on{opacity:1}
+.world{transform-origin:center;transform-box:fill-box}
+.enter{animation:enter .32s cubic-bezier(.2,.7,.2,1)}
+@keyframes enter{from{opacity:0;transform:scale(.97)}}
+
+@media (max-width:900px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto auto;height:auto}
+  .bar{padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));flex-wrap:wrap;gap:8px}
+  .bar .src,.bar .sep{display:none}
+  .rail{border-right:0;border-bottom:1px solid var(--line);overflow:visible}
+  .rail h4,.legend{display:none}
+  .nav{flex-direction:row;overflow-x:auto;padding:8px 16px;gap:6px}
+  .nav button{grid-template-columns:auto;flex:none;border:1px solid var(--line);padding:6px 10px}
+  .nav .lv,.nav .s{display:none}
+  .nav button[aria-current="true"]::before{display:none}
+  .vhead{padding:14px 16px}
+  .stage{height:64vh;flex:none}
+  .jbar{position:relative;left:auto;bottom:auto;transform:none;width:auto;margin:0;border-radius:0;border-width:1px 0 0;grid-template-columns:1fr;box-shadow:none}
+  .main{display:block}
+  .insp{border-left:0}
+  .status{display:none}
+  .hint{display:none}
+}
+</style>
+
+<div id="app">
+  <header class="bar">
+    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" fill="#0047bb"/><path d="M7 8h10M7 12h7M7 16h4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    <span class="brand" id="brand"></span>
+    <span class="sep"></span>
+    <nav class="crumbs" id="crumbs" aria-label="Where you are"></nav>
+    <span class="grow"></span>
+    <span class="src" id="src"></span>
+  </header>
+
+  <aside class="rail" aria-label="Views">
+    <h4>Views</h4>
+    <div class="nav" id="nav-static"></div>
+    <h4 id="jh">Journeys</h4>
+    <div class="nav" id="nav-journeys"></div>
+    <div class="legend" id="legend"></div>
+  </aside>
+
+  <section class="main">
+    <div class="vhead">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1 id="vtitle"></h1>
+      <p id="vdesc"></p>
+    </div>
+    <div class="stage" id="stage">
+      <svg id="svg" role="img" aria-labelledby="vtitle"></svg>
+      <div class="hint" id="hint"></div>
+      <div class="tools">
+        <button id="zout" title="Zoom out (-)" aria-label="Zoom out"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 8h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+        <button id="zfit" title="Fit to screen (F)" aria-label="Fit to screen"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 6V3.5a1 1 0 0 1 1-1H6M10 2.5h2.5a1 1 0 0 1 1 1V6M13.5 10v2.5a1 1 0 0 1-1 1H10M6 13.5H3.5a1 1 0 0 1-1-1V10"/></svg></button>
+        <button id="zin" title="Zoom in (+)" aria-label="Zoom in"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 8h9M8 3.5v9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="jbar" id="jbar" hidden></div>
+    </div>
+  </section>
+
+  <aside class="insp" id="insp" aria-label="Details" aria-live="polite"></aside>
+
+  <footer class="status" id="status"></footer>
+</div>
+
+<script id="c4-data" type="application/json">__C4_DATA__</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("c4-data").textContent);
+  var E = D.elements, VIEWS = D.views, META = D.meta || {};
+  var byId = {}; VIEWS.forEach(function (v) { byId[v.id] = v; });
+  var $ = function (id) { return document.getElementById(id); };
+  var svg = $("svg"), stage = $("stage");
+  var NS = "http://www.w3.org/2000/svg";
+  var KIND = { person: "Person", agent: "AI agent", system: "Software system", container: "Container", component: "Component", external: "Outside system" };
+  var LEVEL = { "System context": "C1", "Containers": "C2", "Components": "C3" };
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  var FONT = getComputedStyle(document.body).fontFamily;
+  var MONO = '"Cascadia Mono",Consolas,ui-monospace,monospace';
+  var ctx = document.createElement("canvas").getContext("2d");
+  function tw(t, f) { ctx.font = f; return ctx.measureText(t).width; }
+  function wrap(text, font, width, max) {
+    var words = String(text || "").split(/\s+/).filter(Boolean), lines = [], cur = "";
+    for (var i = 0; i < words.length; i++) {
+      var t = cur ? cur + " " + words[i] : words[i];
+      if (tw(t, font) <= width || !cur) cur = t; else { lines.push(cur); cur = words[i]; }
+    }
+    if (cur) lines.push(cur);
+    if (lines.length > max) {
+      lines = lines.slice(0, max);
+      var last = lines[max - 1];
+      while (last && tw(last + "…", font) > width) last = last.replace(/\s*\S+$/, "");
+      lines[max - 1] = (last || lines[max - 1]) + "…";
+    }
+    return lines.map(function (l) {
+      while (tw(l, font) > width && l.length > 2) l = l.slice(0, -2) + "…";
+      return l;
+    });
+  }
+
+  // Parents: a view is opened from the element that zooms into it.
+  var parent = {}, opener = {};
+  VIEWS.forEach(function (v) {
+    if (v.kind !== "static") return;
+    Object.keys(v.positions).forEach(function (id) {
+      var z = E[id] && E[id].zoom;
+      if (z && byId[z] && z !== v.id && !parent[z]) { parent[z] = v.id; opener[z] = id; }
+    });
+  });
+  function baseOf(v) { return v.kind === "journey" ? byId[v.base] : v; }
+
+  var S = { view: VIEWS[0].id, sel: null, step: 0, playing: null, vb: null, showNode: false };
+
+  // ---------- geometry ----------
+  function rectOf(b, id) {
+    var p = b.positions[id]; if (p) return { x: p[0], y: p[1], w: p[2], h: p[3] };
+    var q = (b.boundaries || []).filter(function (x) { return x.id === id; })[0];
+    return q && { x: q.x, y: q.y, w: q.w, h: q.h };
+  }
+  function nameOf(b, id) { if (E[id]) return E[id].name; var q = (b.boundaries || []).filter(function (x) { return x.id === id; })[0]; return q ? q.name : id; }
+  function exitT(r, px, py, dx, dy) {
+    var t = Infinity;
+    if (dx > 0) t = Math.min(t, (r.x + r.w - px) / dx); else if (dx < 0) t = Math.min(t, (r.x - px) / dx);
+    if (dy > 0) t = Math.min(t, (r.y + r.h - py) / dy); else if (dy < 0) t = Math.min(t, (r.y - py) / dy);
+    return t;
+  }
+  function segment(a, b, off) {
+    var ax = a.x + a.w / 2, ay = a.y + a.h / 2, bx = b.x + b.w / 2, by = b.y + b.h / 2;
+    var dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
+    var nx = -dy / len, ny = dx / len;
+    ax += nx * off; ay += ny * off; bx += nx * off; by += ny * off;
+    var t1 = exitT(a, ax, ay, dx, dy), t2 = exitT(b, bx, by, -dx, -dy);
+    var x1 = ax + dx * t1, y1 = ay + dy * t1, x2 = bx - dx * t2, y2 = by - dy * t2;
+    var g = 3 / len; x2 -= dx * g; y2 -= dy * g; x1 += dx * g * 0.5; y1 += dy * g * 0.5;
+    return { x1: x1, y1: y1, x2: x2, y2: y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
+  }
+  function autoOffsets(list) {
+    var dirs = {};
+    list.forEach(function (r) { var k = [r.from, r.to].sort().join("|"); (dirs[k] = dirs[k] || {})[r.from + ">" + r.to] = 1; });
+    return list.map(function (r) {
+      if (r.offset != null) return r.offset;
+      var k = [r.from, r.to].sort().join("|");
+      return Object.keys(dirs[k]).length > 1 ? (r.from < r.to ? -11 : 11) : 0;
+    });
+  }
+
+  // ---------- drawing ----------
+  function nodeSVG(id, r) {
+    var e = E[id] || { name: id, kind: "component" };
+    var k = KIND[e.kind] ? e.kind : "component";
+    var dark = k === "person" || k === "agent" || k === "system";
+    var rx = (k === "person" || k === "agent") ? 14 : 8;
+    var pad = k === "container" ? 18 : 14, w = r.w - pad - 12;
+    var comp = k === "component";
+    var fN = "600 " + (comp ? 13 : 14) + "px " + FONT, fS = (comp ? 11.5 : 12) + "px " + FONT, fT = "10.5px " + MONO;
+    var nm = wrap(e.name, fN, w, 2);
+    var tech = e.tech ? wrap("[" + e.tech + "]", fT, w, 1) : [];
+    var lhN = comp ? 16 : 17, lhS = comp ? 14.5 : 15.5, lhT = 14;
+    var room = r.h - 22 - nm.length * lhN - tech.length * lhT;
+    var shMax = Math.max(0, Math.min(comp ? 4 : 3, Math.floor(room / lhS)));
+    var sh = shMax ? wrap(e.short || e.description, fS, w, shMax) : [];
+    var hTot = nm.length * lhN + tech.length * lhT + (sh.length ? 5 + sh.length * lhS : 0);
+    var y = r.y + (r.h - hTot) / 2 + 12, x = r.x + pad;
+    var out = '<g class="node k-' + k + '" data-id="' + esc(id) + '" tabindex="0" role="button" aria-label="' + esc(e.name + ", " + KIND[k]) + '">';
+    out += '<rect class="ring" x="' + (r.x - 4) + '" y="' + (r.y - 4) + '" width="' + (r.w + 8) + '" height="' + (r.h + 8) + '" rx="' + (rx + 4) + '"/>';
+    out += '<rect class="box" x="' + r.x + '" y="' + r.y + '" width="' + r.w + '" height="' + r.h + '" rx="' + rx + '"/>';
+    if (k === "container") out += '<rect class="strip" x="' + r.x + '" y="' + (r.y + 10) + '" width="3.5" height="' + (r.h - 20) + '" rx="1.5"/>';
+    if (k === "person") out += '<circle class="head" cx="' + (r.x + r.w / 2) + '" cy="' + r.y + '" r="13"/>';
+    if (k === "agent") out += '<rect class="head" x="' + (r.x + r.w / 2 - 13) + '" y="' + (r.y - 13) + '" width="26" height="26" rx="7"/>';
+    var dy = y;
+    nm.forEach(function (l) { out += '<text class="nm" x="' + x + '" y="' + dy + '">' + esc(l) + "</text>"; dy += lhN; });
+    tech.forEach(function (l) { out += '<text class="tc" x="' + x + '" y="' + (dy - 2) + '">' + esc(l) + "</text>"; dy += lhT; });
+    if (sh.length) dy += 5;
+    sh.forEach(function (l) { out += '<text class="sh" x="' + x + '" y="' + dy + '">' + esc(l) + "</text>"; dy += lhS; });
+    if (e.zoom && byId[e.zoom]) {
+      var zx = r.x + r.w - 15, zy = r.y + 15;
+      out += '<g class="zm"><title>Open: ' + esc(byId[e.zoom].title) + '</title><circle cx="' + zx + '" cy="' + zy + '" r="9.5"/><path d="M' + (zx - 3.5) + " " + zy + "h7M" + zx + " " + (zy - 3.5) + 'v7"/></g>';
+    }
+    void dark;
+    return out + "</g>";
+  }
+  function labelSVG(cls, x, y, text, attrs) {
+    var f = "11.5px " + FONT, w = tw(text, f) + 10;
+    return '<g class="lbl ' + cls + '" ' + attrs + '><rect x="' + (x - w / 2) + '" y="' + (y - 9) + '" width="' + w + '" height="18" rx="4"/><text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle">' + esc(text) + "</text></g>";
+  }
+  function badgeSVG(x, y, n, now) {
+    return '<g class="badge' + (now ? " now" : "") + '"><circle cx="' + x + '" cy="' + y + '" r="11"/><text x="' + x + '" y="' + (y + 4) + '" text-anchor="middle">' + n + "</text></g>";
+  }
+
+  function draw(animate) {
+    var v = byId[S.view], b = baseOf(v), journey = v.kind === "journey";
+    var defs = '<defs>' + ["mk", "mk-on", "mk-now"].map(function (c) {
+      return '<marker id="' + c + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="' + c + '" d="M0 0L10 5L0 10z"/></marker>';
+    }).join("") + "</defs>";
+    var bnd = "", edges = "", labels = "", nodes = "", badges = "";
+    (b.boundaries || []).forEach(function (q) {
+      bnd += '<g class="bnd"><rect x="' + q.x + '" y="' + q.y + '" width="' + q.w + '" height="' + q.h + '" rx="12"/><text x="' + (q.x + 14) + '" y="' + (q.y + 20) + '">' + esc(q.name) + "</text></g>";
+    });
+    var rels = b.relationships || [], offs = autoOffsets(rels);
+    rels.forEach(function (r, i) {
+      var a = rectOf(b, r.from), c = rectOf(b, r.to); if (!a || !c) return;
+      var s = segment(a, c, offs[i]);
+      var at = 'data-from="' + esc(r.from) + '" data-to="' + esc(r.to) + '"';
+      edges += '<g class="edge' + (journey ? " ghost" : "") + '" ' + at + '><path class="hit" d="M' + s.x1 + " " + s.y1 + "L" + s.x2 + " " + s.y2 + '"/><path class="ln" marker-end="url(#mk)" d="M' + s.x1 + " " + s.y1 + "L" + s.x2 + " " + s.y2 + '"/></g>';
+      if (r.label && !journey) labels += labelSVG("", s.mx, s.my, r.label, at);
+    });
+    var on = {};
+    if (journey) {
+      var steps = v.steps, joffs = autoOffsets(steps.filter(function (s) { return s.from && s.to; }).concat(rels));
+      var jo = 0;
+      steps.forEach(function (st, i) {
+        if (i > S.step) { if (st.from && st.to) jo++; return; }
+        var now = i === S.step;
+        [st.from, st.to, st.at].forEach(function (id) { if (id) on[id] = on[id] || (now ? "now" : "on"); if (now && id) on[id] = "now"; });
+        if (st.from && st.to) {
+          var a = rectOf(b, st.from), c = rectOf(b, st.to);
+          if (a && c) {
+            var s = segment(a, c, joffs[jo]);
+            var cls = now ? "now" : "on", mk = now ? "mk-now" : "mk-on";
+            edges += '<g class="edge on ' + cls + '"><path class="ln" marker-end="url(#' + mk + ')" d="M' + s.x1 + " " + s.y1 + "L" + s.x2 + " " + s.y2 + '"/></g>';
+            badges += badgeSVG(s.mx, s.my, i + 1, now);
+          }
+          jo++;
+        }
+      });
+    }
+    Object.keys(b.positions).forEach(function (id) { nodes += nodeSVG(id, rectOf(b, id)); });
+    var cls = "world" + (journey ? " focus" : "") + (b.labels === "hover" ? " labels-hover" : "") + (animate ? " enter" : "");
+    svg.innerHTML = defs + '<g class="' + cls + '" id="world">' + bnd + edges + nodes + labels + badges + "</g>";
+    if (journey) {
+      svg.querySelectorAll(".node").forEach(function (n) {
+        var st = on[n.getAttribute("data-id")];
+        if (st) n.classList.add("on"); if (st === "now") n.classList.add("now");
+      });
+    }
+    applyFocus();
+  }
+
+  function applyFocus(hov) {
+    var v = byId[S.view]; if (v.kind === "journey") {
+      svg.querySelectorAll(".node").forEach(function (n) { n.classList.toggle("sel", n.getAttribute("data-id") === S.sel); });
+      return;
+    }
+    var w = $("world"); if (!w) return;
+    var f = hov || S.sel;
+    svg.querySelectorAll(".node").forEach(function (n) { n.classList.toggle("sel", n.getAttribute("data-id") === S.sel); n.classList.remove("on"); });
+    svg.querySelectorAll(".edge,.lbl").forEach(function (n) { n.classList.remove("on"); });
+    w.classList.toggle("focus", !!f);
+    if (!f) return;
+    var keep = {}; keep[f] = 1;
+    svg.querySelectorAll(".edge[data-from],.lbl[data-from]").forEach(function (g) {
+      var a = g.getAttribute("data-from"), c = g.getAttribute("data-to");
+      if (a === f || c === f) { g.classList.add("on"); keep[a] = keep[c] = 1; }
+    });
+    svg.querySelectorAll(".node").forEach(function (n) { if (keep[n.getAttribute("data-id")]) n.classList.add("on"); });
+    svg.querySelectorAll(".edge.on .ln").forEach(function (p) { p.setAttribute("marker-end", "url(#mk-on)"); });
+    svg.querySelectorAll(".edge:not(.on) .ln").forEach(function (p) { p.setAttribute("marker-end", "url(#mk)"); });
+  }
+
+  // ---------- view box ----------
+  function boundsOf(b) {
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    Object.keys(b.positions).forEach(function (id) { var p = b.positions[id]; x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0] + p[2]); y1 = Math.max(y1, p[1] + p[3]); });
+    (b.boundaries || []).forEach(function (q) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x + q.w); y1 = Math.max(y1, q.y + q.h); });
+    var px = 28, top = 34, bottom = byId[S.view].kind === "journey" && window.innerWidth > 900 ? 150 : 28;
+    return { x: x0 - px, y: y0 - top, w: x1 - x0 + 2 * px, h: y1 - y0 + top + bottom };
+  }
+  function setVB(r) { S.vb = r; svg.setAttribute("viewBox", r.x + " " + r.y + " " + r.w + " " + r.h); }
+  function fit() { setVB(boundsOf(baseOf(byId[S.view]))); }
+  function scale() { var cw = svg.clientWidth || 1, ch = svg.clientHeight || 1; return Math.min(cw / S.vb.w, ch / S.vb.h); }
+  function toSvg(cx, cy) { var p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+  function zoomAt(f, cx, cy) {
+    var b = boundsOf(baseOf(byId[S.view])), vb = S.vb;
+    var nw = Math.max(b.w * 0.2, Math.min(b.w * 3, vb.w * f)), k = nw / vb.w, nh = vb.h * k;
+    var p = cx == null ? { x: vb.x + vb.w / 2, y: vb.y + vb.h / 2 } : toSvg(cx, cy);
+    setVB({ x: p.x - (p.x - vb.x) * k, y: p.y - (p.y - vb.y) * k, w: nw, h: nh });
+  }
+  function animateVB(to, ms, done) {
+    var from = S.vb, t0 = performance.now();
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) ms = 1;
+    function ease(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+    (function tick(now) {
+      var t = Math.min(1, (now - t0) / ms), e = ease(t);
+      setVB({ x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e, w: from.w + (to.w - from.w) * e, h: from.h + (to.h - from.h) * e });
+      if (t < 1) requestAnimationFrame(tick); else if (done) done();
+    })(t0);
+  }
+
+  // ---------- chrome ----------
+  function chain(id) { var out = [], v = byId[id]; if (v.kind === "journey") { out.unshift(v.id); v = byId[v.base]; } while (v) { out.unshift(v.id); v = byId[parent[v.id]]; } return out; }
+  function navItem(v) {
+    var lv = v.kind === "journey" ? v.steps.length : (LEVEL[v.level] || "•");
+    var sub = v.kind === "journey" ? v.steps.length + " steps" : v.level;
+    return '<button data-view="' + esc(v.id) + '" aria-current="' + (S.view === v.id) + '"><span class="lv">' + esc(lv) + '</span><span class="t">' + esc(v.title) + '<span class="s">' + esc(sub) + "</span></span></button>";
+  }
+  function chrome() {
+    var v = byId[S.view], b = baseOf(v);
+    $("brand").textContent = D.title || "Architecture";
+    $("src").textContent = META.source ? "Model: " + META.source : "";
+    $("nav-static").innerHTML = VIEWS.filter(function (x) { return x.kind === "static"; }).map(navItem).join("");
+    var js = VIEWS.filter(function (x) { return x.kind === "journey"; });
+    $("jh").hidden = !js.length; $("nav-journeys").innerHTML = js.map(navItem).join("");
+    var c = chain(S.view);
+    $("crumbs").innerHTML = c.map(function (id, i) {
+      var t = esc(byId[id].title);
+      return (i ? '<span class="gt">›</span>' : "") + (i === c.length - 1 ? '<span class="here">' + t + "</span>" : '<button data-view="' + esc(id) + '">' + t + "</button>");
+    }).join("");
+    $("eyebrow").textContent = v.kind === "journey" ? "Journey · on " + b.title.toLowerCase() : v.level;
+    $("vtitle").textContent = v.title;
+    $("vdesc").textContent = v.description || "";
+    var present = {}; Object.keys(b.positions).forEach(function (id) { present[(E[id] || {}).kind] = 1; });
+    var lg = '<h4>Key</h4>' + Object.keys(KIND).map(function (k) {
+      return '<div class="lg' + (present[k] ? "" : " off") + '"><span class="sw k-' + k + '"></span>' + KIND[k] + "</div>";
+    }).join("") + '<div class="lg' + ((b.boundaries || []).length ? "" : " off") + '"><span class="sw k-boundary"></span>Boundary</div>';
+    $("legend").innerHTML = lg;
+    $("hint").textContent = v.kind === "journey" ? "Use ← → to step through" : (Object.keys(b.positions).some(function (id) { return E[id] && E[id].zoom; }) ? "Click a box for details · double-click ⊕ to open it" : "Click a box for details");
+    var n = Object.keys(E).length, sv = VIEWS.filter(function (x) { return x.kind === "static"; }).length;
+    $("status").innerHTML = "<span>" + n + " elements · " + sv + " views · " + js.length + " journeys</span>" +
+      (META.cited ? '<span class="ok">✓ ' + esc(META.cited) + "</span>" : "") +
+      (META.generated ? "<span>" + esc(META.generated) + "</span>" : "") +
+      '<span class="grow"></span><span>← → steps · F fit · Esc clear</span>';
+    jbar();
+  }
+  function jbar() {
+    var v = byId[S.view], el = $("jbar");
+    if (v.kind !== "journey") { el.hidden = true; return; }
+    el.hidden = false;
+    var n = v.steps.length, i = S.step;
+    el.innerHTML = '<div class="jnum"><b>' + (i + 1) + "</b>of " + n + '</div><div class="jtext">' + esc(v.steps[i].text) + '</div><div class="jctl">' +
+      '<button data-j="prev" aria-label="Previous step"' + (i === 0 ? " disabled" : "") + '><svg width="14" height="14" viewBox="0 0 14 14"><path d="M8.5 3L4.5 7l4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+      '<button data-j="play" aria-label="' + (S.playing ? "Pause" : "Play") + '">' + (S.playing ? '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M4.5 3v8M9.5 3v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>' : '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M4.5 2.8v8.4L11 7z" fill="currentColor"/></svg>') + "</button>" +
+      '<button class="go" data-j="next"' + (i === n - 1 ? " disabled" : "") + '>Next<svg width="14" height="14" viewBox="0 0 14 14"><path d="M5.5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>' +
+      '<div class="jprog">' + v.steps.map(function (_, k) { return '<button data-step="' + k + '" aria-label="Step ' + (k + 1) + '" class="' + (k < i ? "done" : k === i ? "cur" : "") + '"></button>'; }).join("") + "</div>";
+  }
+
+  // ---------- inspector ----------
+  function fileLink(p) {
+    var path = typeof p === "string" ? p : p.path, line = typeof p === "string" ? null : p.line;
+    var text = esc(path + (line ? ":" + line : ""));
+    if (!META.repoUrl) return "<li>" + text + "</li>";
+    var href = META.repoUrl.replace(/\/$/, "") + "/blob/" + encodeURIComponent(META.ref || "main") + "/" + path.split("/").map(encodeURIComponent).join("/") + (line ? "#L" + line : "");
+    return '<li><a href="' + esc(href) + '" target="_blank" rel="noopener">' + text + "</a></li>";
+  }
+  function inspector() {
+    var v = byId[S.view], b = baseOf(v), el = $("insp");
+    if (S.sel && E[S.sel] && (v.kind !== "journey" || S.showNode)) { el.innerHTML = nodePanel(S.sel, v, b); return; }
+    if (v.kind === "journey") {
+      el.innerHTML = '<div class="ihead"><div class="ikind">Journey · ' + v.steps.length + ' steps</div><h2>' + esc(v.title) + '</h2></div><div class="isec"><p class="lead">' + esc(v.description) + '</p></div><div class="isec"><h3>Steps</h3><ol class="steps">' +
+        v.steps.map(function (s, i) { return '<li class="' + (i < S.step ? "done" : i === S.step ? "cur" : "") + '"><button data-step="' + i + '"><span class="n">' + (i + 1) + "</span><span>" + esc(s.text) + "</span></button></li>"; }).join("") +
+        '</ol></div><div class="isec"><p class="tip">Click any box to see what it is and which files it lives in.</p></div>';
+      return;
+    }
+    var groups = {};
+    Object.keys(b.positions).forEach(function (id) { var k = (E[id] || {}).kind || "component"; (groups[k] = groups[k] || []).push(id); });
+    var list = Object.keys(KIND).filter(function (k) { return groups[k]; }).map(function (k) {
+      return groups[k].map(function (id) { var e = E[id]; return '<li><button data-sel="' + esc(id) + '"><span class="sw k-' + k + '"></span>' + esc(e.name) + (e.zoom && byId[e.zoom] ? '<span class="x">opens ⊕</span>' : "") + "</button></li>"; }).join("");
+    }).join("");
+    var top = !parent[v.id] && D.summary ? '<div class="isec"><h3>What it is</h3><p class="lead">' + esc(D.summary) + "</p></div>" : "";
+    var js = VIEWS.filter(function (x) { return x.kind === "journey" && x.base === v.id; });
+    var jl = js.length ? '<div class="isec"><h3>Walk through it</h3><ul class="els">' + js.map(function (x) { return '<li><button data-view="' + esc(x.id) + '"><span class="lv" style="width:26px">' + x.steps.length + "</span>" + esc(x.title) + "</button></li>"; }).join("") + "</ul></div>" : "";
+    el.innerHTML = '<div class="ihead"><div class="ikind">Details</div><p class="tip" style="margin:6px 0 0">Select a box to see what it does, the evidence for it, and the files it lives in.</p></div>' + top + jl +
+      '<div class="isec"><h3>In this view</h3><ul class="els">' + list + "</ul></div>" + askBox(null);
+  }
+  function askBox(id) {
+    if (!D.ask) return "";
+    var cmd = D.ask + (id ? " " + id : "");
+    return '<div class="isec"><h3>Ask your agent</h3><div class="ask"><code>' + esc(cmd) + '</code><button data-copy="' + esc(cmd) + '">Copy</button></div><p class="note">' + (id ? "It reads these files and answers from them." : "In a clone of this repository, ask in Claude Code or Copilot.") + "</p></div>";
+  }
+  function nodePanel(id, v, b) {
+    var e = E[id], k = KIND[e.kind] ? e.kind : "component", h = "";
+    if (v.kind === "journey") h += '<div class="isec" style="padding-bottom:0;border:0"><button class="back" data-back="1">← Back to the steps</button></div>';
+    h += '<div class="ihead"><div class="ikind"><span class="sw k-' + k + '"></span>' + KIND[k] + '</div><h2>' + esc(e.name) + "</h2>" + (e.tech ? '<div class="itech">' + esc(e.tech) + "</div>" : "") + "</div>";
+    h += '<div class="isec"><p class="lead">' + esc(e.description) + "</p>" + (e.does ? "<p>" + esc(e.does) + "</p>" : "") + "</div>";
+    if (e.evidence) h += '<div class="isec"><p class="ev"><b>Shown on a real repository</b>' + esc(e.evidence) + "</p></div>";
+    var rels = (b.relationships || []).filter(function (r) { return r.from === id || r.to === id; });
+    if (rels.length) h += '<div class="isec"><h3>Connections in this view</h3><ul class="rels">' + rels.map(function (r) {
+      var out = r.from === id, o = out ? r.to : r.from;
+      var who = E[o] ? '<button class="link" data-sel="' + esc(o) + '">' + esc(E[o].name) + "</button>" : "<span>" + esc(nameOf(b, o)) + "</span>";
+      return '<li><span class="d">' + (out ? "→" : "←") + "</span>" + who + '<span class="l">' + esc(r.label || "") + "</span></li>";
+    }).join("") + "</ul></div>";
+    if (e.zoom && byId[e.zoom]) h += '<div class="isec"><button class="primary" data-zoom="' + esc(id) + '">Open “' + esc(byId[e.zoom].title) + '”<svg width="14" height="14" viewBox="0 0 14 14"><path d="M5.5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>';
+    if ((e.sources || []).length) h += '<div class="isec"><h3>Where it lives</h3><ul class="files">' + e.sources.map(fileLink).join("") + "</ul></div>";
+    var also = VIEWS.filter(function (x) { return x.kind === "static" && x.id !== b.id && x.positions[id]; });
+    if (also.length) h += '<div class="isec"><h3>Also shown in</h3><ul class="els">' + also.map(function (x) { return '<li><button data-view="' + esc(x.id) + '" data-keep="' + esc(id) + '"><span class="lv" style="width:26px">' + esc(LEVEL[x.level] || "") + "</span>" + esc(x.title) + "</button></li>"; }).join("") + "</ul></div>";
+    return h + askBox(id);
+  }
+
+  // ---------- navigation ----------
+  function writeHash() {
+    var v = byId[S.view], h = S.view + (v.kind === "journey" ? "--" + (S.step + 1) : S.sel ? "--" + S.sel : "");
+    if (location.hash.slice(1) !== h) history.replaceState(null, "", "#" + h);
+  }
+  function go(id, opts) {
+    opts = opts || {};
+    if (!byId[id]) return;
+    stop();
+    S.view = id; S.sel = opts.sel || null; S.step = opts.step || 0; S.showNode = false;
+    chrome(); draw(opts.animate !== false); fit(); inspector(); writeHash();
+  }
+  function select(id) {
+    S.sel = id && E[id] ? id : null;
+    S.showNode = !!S.sel;
+    applyFocus(); inspector(); writeHash();
+  }
+  function setStep(i) {
+    var v = byId[S.view]; if (v.kind !== "journey") return;
+    S.step = Math.max(0, Math.min(v.steps.length - 1, i)); S.showNode = false; S.sel = null;
+    var vb = S.vb; draw(false); setVB(vb); jbar(); inspector(); writeHash();
+  }
+  function stop() { if (S.playing) { clearInterval(S.playing); S.playing = null; } }
+  function play() {
+    var v = byId[S.view];
+    if (S.playing) { stop(); jbar(); return; }
+    if (S.step >= v.steps.length - 1) setStep(0);
+    S.playing = setInterval(function () { var vv = byId[S.view]; if (vv.kind !== "journey" || S.step >= vv.steps.length - 1) { stop(); jbar(); return; } setStep(S.step + 1); }, 4200);
+    jbar();
+  }
+  function zoomInto(id) {
+    var e = E[id], v = byId[S.view], b = baseOf(v); if (!e || !e.zoom || !byId[e.zoom]) return;
+    var r = rectOf(b, id), target = e.zoom;
+    animateVB({ x: r.x - 20, y: r.y - 20, w: r.w + 40, h: r.h + 40 }, 420, function () { go(target); });
+  }
+  function readHash() {
+    var h = decodeURIComponent(location.hash.slice(1)), i = h.indexOf("--");
+    var vid = i < 0 ? h : h.slice(0, i), rest = i < 0 ? "" : h.slice(i + 2);
+    if (!byId[vid]) return false;
+    var v = byId[vid];
+    go(vid, { animate: false, step: v.kind === "journey" ? Math.max(0, Math.min(v.steps.length - 1, (parseInt(rest, 10) || 1) - 1)) : 0 });
+    if (v.kind !== "journey" && rest && E[rest] && v.positions[rest]) select(rest);
+    return true;
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", function (ev) {
+    var t = ev.target.closest("[data-view],[data-sel],[data-step],[data-j],[data-zoom],[data-copy],[data-back]");
+    if (!t) return;
+    if (t.hasAttribute("data-view")) { var keep = t.getAttribute("data-keep"); go(t.getAttribute("data-view")); if (keep) select(keep); }
+    else if (t.hasAttribute("data-sel")) select(t.getAttribute("data-sel"));
+    else if (t.hasAttribute("data-step")) { stop(); setStep(+t.getAttribute("data-step")); }
+    else if (t.hasAttribute("data-zoom")) zoomInto(t.getAttribute("data-zoom"));
+    else if (t.hasAttribute("data-back")) { S.showNode = false; S.sel = null; applyFocus(); inspector(); }
+    else if (t.hasAttribute("data-copy")) {
+      var txt = t.getAttribute("data-copy"), done = function () { t.textContent = "Copied"; setTimeout(function () { t.textContent = "Copy"; }, 1400); };
+      var fallback = function () { var c = t.previousElementSibling, r = document.createRange(); r.selectNodeContents(c); var s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+      try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+    } else {
+      var j = t.getAttribute("data-j");
+      if (j === "next") { stop(); setStep(S.step + 1); } else if (j === "prev") { stop(); setStep(S.step - 1); } else if (j === "play") play();
+    }
+  });
+
+  var drag = null;
+  svg.addEventListener("pointerdown", function (ev) {
+    if (ev.button !== 0) return;
+    drag = { x: ev.clientX, y: ev.clientY, vb: S.vb, moved: false, node: ev.target.closest(".node") };
+  });
+  window.addEventListener("pointermove", function (ev) {
+    if (!drag) return;
+    var dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    if (!drag.moved) { drag.moved = true; svg.classList.add("panning"); try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* not captured */ } }
+    var s = scale(); setVB({ x: drag.vb.x - dx / s, y: drag.vb.y - dy / s, w: drag.vb.w, h: drag.vb.h });
+  });
+  window.addEventListener("pointerup", function () {
+    if (!drag) return;
+    var d = drag; drag = null; svg.classList.remove("panning");
+    if (d.moved) return;
+    if (d.node) select(d.node.getAttribute("data-id"));
+    else if (byId[S.view].kind !== "journey" || S.showNode) { S.sel = null; S.showNode = false; applyFocus(); inspector(); writeHash(); }
+  });
+  svg.addEventListener("dblclick", function (ev) { var n = ev.target.closest(".node"); if (n) zoomInto(n.getAttribute("data-id")); });
+  svg.addEventListener("wheel", function (ev) { ev.preventDefault(); zoomAt(Math.exp(ev.deltaY * (ev.ctrlKey ? 0.01 : 0.0016)), ev.clientX, ev.clientY); }, { passive: false });
+  svg.addEventListener("pointerover", function (ev) { var n = ev.target.closest(".node"); if (n && !drag) applyFocus(n.getAttribute("data-id")); });
+  svg.addEventListener("pointerout", function (ev) { var n = ev.target.closest(".node"); if (n && !(ev.relatedTarget && n.contains(ev.relatedTarget))) applyFocus(); });
+  svg.addEventListener("keydown", function (ev) {
+    var n = ev.target.closest && ev.target.closest(".node"); if (!n) return;
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); var id = n.getAttribute("data-id"); if (S.sel === id && E[id].zoom) zoomInto(id); else select(id); }
+  });
+  $("zin").onclick = function () { zoomAt(1 / 1.25); };
+  $("zout").onclick = function () { zoomAt(1.25); };
+  $("zfit").onclick = function () { animateVB(boundsOf(baseOf(byId[S.view])), 260); };
+  document.addEventListener("keydown", function (ev) {
+    if (ev.target.closest && ev.target.closest("input,textarea")) return;
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    var v = byId[S.view];
+    if (ev.key === "ArrowRight" && v.kind === "journey") { ev.preventDefault(); stop(); setStep(S.step + 1); }
+    else if (ev.key === "ArrowLeft" && v.kind === "journey") { ev.preventDefault(); stop(); setStep(S.step - 1); }
+    else if (ev.key === "Escape") { if (S.sel) { S.sel = null; S.showNode = false; applyFocus(); inspector(); writeHash(); } else if (parent[S.view]) go(parent[S.view], { sel: opener[S.view] }); }
+    else if (ev.key === "f" || ev.key === "F") animateVB(boundsOf(baseOf(v)), 260);
+    else if (ev.key === "+" || ev.key === "=") zoomAt(1 / 1.25);
+    else if (ev.key === "-") zoomAt(1.25);
+  });
+  window.addEventListener("hashchange", readHash);
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(fit, 120); });
+
+  if (!readHash()) go(VIEWS[0].id, { animate: false });
+})();
+</script>

@@ -3,14 +3,17 @@
 // Large repositories run in "changed" mode: only files the change touches are checked, and a
 // lint-style check passes when no file's count of any rule went up compared with the merge base.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   clonePairs,
   compareCounts,
   excepted,
+  exceptionProblems,
   expiredExceptions,
+  gateFindings,
+  testIntegrityFindings,
   lintCategory,
   lintKey,
   scanSecrets,
@@ -18,11 +21,19 @@ import {
 
 export const ROOT = spawnSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).stdout.trim();
 export const OUT_DIR = path.join(ROOT, ".cache", "fence");
+// Where the gate's own code and configuration come from. In CI this is a checkout of the base branch, so a pull
+// request cannot change the checks, rules or exceptions that judge it. Locally it is the working tree.
+export const GATE = process.env.FENCE_GATE_DIR ? path.resolve(process.env.FENCE_GATE_DIR) : ROOT;
+
+// The repository's own commands never see where the gate lives: a test suite that starts another fence (as this
+// repository's do) would otherwise read the outer run's gate instead of its own.
+const CHILD_ENV = Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "FENCE_GATE_DIR"));
 
 export function run(argv, opts = {}) {
   const [cmd, ...args] = argv;
   const r = spawnSync(cmd, args, {
     cwd: opts.cwd ?? ROOT,
+    env: CHILD_ENV,
     encoding: "utf8",
     maxBuffer: 512 * 1024 * 1024,
     shell: false,
@@ -43,7 +54,8 @@ export function readJson(file, fallback) {
 
 export function result(id, category, title, findings, ctx, extra = {}) {
   const kept = findings.filter((f) => !excepted(id, f, ctx.exceptions, today()));
-  const waived = findings.length - kept.length;
+  const waivedList = findings.filter((f) => excepted(id, f, ctx.exceptions, today()));
+  const waived = waivedList.length;
   return {
     id,
     category,
@@ -51,6 +63,7 @@ export function result(id, category, title, findings, ctx, extra = {}) {
     status: kept.length ? "fail" : "pass",
     summary: kept.length ? `${kept.length} finding${kept.length === 1 ? "" : "s"}` : `clean${waived ? ` (${waived} under an exception)` : ""}`,
     findings: kept,
+    waived: waivedList,
     fixable: Boolean(ctx.config.fixers?.[id]),
     ...extra,
   };
@@ -115,17 +128,50 @@ const dropWorktree = (dir) => run(["git", "worktree", "remove", "--force", dir])
  * and ratchet "diff", the same command runs on the merge base for the same files, and only counts
  * that went up are findings, so existing debt in a large repository does not block a change.
  */
+/** Fields of a check that name a file or directory its tools write, for the review page. */
+export const EVIDENCE = ["results", "coverage", "mutations"];
+
 export function commandCheck(spec, ctx) {
+  // Record what the check looked at, so the review page can say which checks covered each changed file:
+  // the files it ran on (changed or affected mode), or the paths a person declared it covers (whole-repository mode).
+  const scope = { files: [] };
+  // Evidence files the check's own tools write, read by the review page: per-test results (JUnit XML, a file or a
+  // directory of them, as Maven and Gradle write), line coverage (JaCoCo XML or lcov) and mutation results (PIT XML).
+  // A stale file from an earlier run must not stand in for this one.
+  const evidence = EVIDENCE.filter((k) => spec[k]);
+  for (const k of evidence) {
+    rmSync(path.join(ROOT, spec[k]), { force: true, recursive: true });
+    mkdirSync(path.dirname(path.join(ROOT, spec[k].replace(/\/+$/, ""))), { recursive: true });
+  }
+  const out = commandCheckRun(spec, ctx, scope);
+  for (const r of out) {
+    r.run = spec.run;
+    for (const k of evidence) r[k] = existsSync(path.join(ROOT, spec[k])) ? spec[k] : null;
+    if (spec.explain) r.explain = spec.explain;
+    if (spec.files === "changed" || spec.files === "affected") r.files = scope.files;
+    else if (spec.covers) r.covers = Array.isArray(spec.covers) ? spec.covers : [spec.covers];
+  }
+  return out;
+}
+
+function commandCheckRun(spec, ctx, scope) {
   const title = spec.title ?? spec.id;
   let files = [];
   if (spec.files === "changed" || spec.files === "affected") {
     const changed = changedFiles(ctx.base);
     files = (spec.files === "affected" ? affectedFiles(changed) : changed).filter(matcher(spec.glob));
     if (!files.length) return [skip(spec.id, spec.category, title, `no ${spec.files} files for this check`)];
-    if (spec.maxFiles && files.length > spec.maxFiles) files = files.slice(0, spec.maxFiles);
+    if (spec.maxFiles && files.length > spec.maxFiles) {
+      // Checking only part of a change and reporting it clean would be a pass nobody earned.
+      if (spec.truncate !== "allow")
+        return [{ id: spec.id, category: spec.category, title, status: "fail", summary: `${files.length} files, limit ${spec.maxFiles}`, findings: [{ message: `This change has ${files.length} ${spec.files} files and the check is limited to ${spec.maxFiles}, so it would check only part of it.`, fix: "Split the change, raise maxFiles, or have a person set truncate: \"allow\" for this check." }], fixable: false }];
+      files = files.slice(0, spec.maxFiles);
+    }
   }
+  scope.files = files;
   if (spec.parse === "tsc") return tscCheck(spec, files, ctx);
-  const argv = [...spec.run, ...files];
+  // "{base}" in a command stands for the commit the change is compared with (a script that needs changed lines).
+  const argv = [...spec.run.map((a) => (a === "{base}" ? ctx.base ?? "HEAD" : a)), ...files];
   if (spec.parse === "exit") {
     const r = run(argv);
     const tail = `${r.stdout}\n${r.stderr}`.trim().split("\n").slice(-15).join("\n");
@@ -134,6 +180,9 @@ export function commandCheck(spec, ctx) {
   if (spec.parse === "lines") {
     const r = run(argv);
     const lines = r.stdout.split("\n").map((l) => l.trim()).filter(Boolean);
+    // A tool that failed and listed nothing did not check anything; that is not a pass.
+    if (r.code !== 0 && !lines.length)
+      return [result(spec.id, spec.category, title, [{ message: `the command failed (exit ${r.code}) and listed no files: ${(r.stderr || String(r.error ?? "")).trim().slice(-300)}`, fix: "Fix the command in .fence/fence.json or the tool's setup." }], ctx)];
     return [result(spec.id, spec.category, title, lines.map((file) => ({ file, message: spec.message ?? "needs attention", fix: spec.hint })), ctx)];
   }
   if (spec.parse === "eslint-json") return eslintCheck(spec, argv, files, ctx);
@@ -386,37 +435,119 @@ export function mapCoverage(ctx) {
 }
 
 export function guard(ctx) {
-  if (!existsSync(path.join(ROOT, ".cartographer", "bin", "guard.py"))) return [skip("guard", "structure", "Architecture and process rules", "Cartographer not installed")];
+  const title = "Architecture and process rules (guard.py)";
+  const bin = path.join(GATE, ".cartographer", "bin", "guard.py");
+  if (!existsSync(bin)) {
+    if (existsSync(path.join(ROOT, ".cartographer"))) return [result("guard", "structure", title, [{ message: "Cartographer is in this repository but the gate has no guard.py, so its rules cannot run.", fix: "Restore .cartographer/bin/guard.py on the base branch." }], ctx)];
+    return [skip("guard", "structure", title, "Cartographer not installed")];
+  }
   const out = path.join(OUT_DIR, "guard.json");
   mkdirSync(OUT_DIR, { recursive: true });
+  rmSync(out, { force: true });
   const mode = ctx.ci ? ["--base", ctx.base, "--head", "HEAD"] : ["--worktree", "--base", ctx.base];
-  run(["python3", ".cartographer/bin/guard.py", ...mode, "--json", out, "--quiet", "--no-log"]);
-  const res = readJson(out, {});
+  // Rules and baseline come from the gate (the base branch in CI); the code and the map come from the change.
+  const rulesFrom = GATE === ROOT ? [] : ["--rules-from", path.join(GATE, ".cartographer")];
+  const r = run(["python3", bin, ...mode, ...rulesFrom, "--json", out, "--quiet", "--no-log"]);
+  const res = readJson(out, null);
+  // Fail closed: no result, a crash, or rules that could not be evaluated are not a pass.
+  if (!res) return [result("guard", "structure", title, [{ message: `guard.py wrote no result (exit ${r.code}): ${(r.stderr || r.stdout).trim().slice(-400)}`, fix: "Run the guard locally and fix what stops it." }], ctx)];
   const findings = (res.blocking ?? []).map((v) => ({ file: v.path, line: v.line, message: `[${v.rule}] ${v.message}`, fix: v.fix }));
-  const r = result("guard", "structure", "Architecture and process rules (guard.py)", findings, ctx);
-  r.fixable = (res.blocking ?? []).some((v) => ctx.config.fixers?.[`guard:${v.rule}`]);
-  return [r];
+  for (const e of res.errors ?? []) findings.push({ message: `A rule could not be evaluated: ${typeof e === "string" ? e : JSON.stringify(e)}`, fix: "Fix the rule or the file it reads; an unevaluated rule enforces nothing." });
+  if (!res.rules && !ctx.config.guardMayBeEmpty)
+    findings.push({ file: ".cartographer/guardrails.json", message: "No accepted rules: the guard enforces nothing on this change.", fix: "A person accepts proposed rules in the rules workbench, or sets guardMayBeEmpty in .fence/fence.json while onboarding." });
+  if (r.code !== 0 && !findings.length) findings.push({ message: `guard.py exited ${r.code} with no finding: ${(r.stderr || "").trim().slice(-300)}`, fix: "Run the guard locally." });
+  const out2 = result("guard", "structure", title, findings, ctx, { rules: res.rules ?? 0 });
+  out2.fixable = (res.blocking ?? []).some((v) => ctx.config.fixers?.[`guard:${v.rule}`]);
+  return [out2];
 }
 
 export function formal(ctx) {
   const title = "Formal models: the code's model holds, broken variants still fail";
   if (!existsSync(path.join(ROOT, "verification"))) return [skip("formal", "tests", title, "no verification/ folder")];
-  if (run(["java", "-version"]).code !== 0) return [skip("formal", "tests", title, "no Java (TLC needs Java 11+)")];
-  const r = run(["python3", ".cartographer/bin/formal.py", "check"]);
+  if (run(["java", "-version"]).code !== 0) {
+    // Models exist but cannot be checked here. In CI that is a failure; locally it is reported, not hidden.
+    if (ctx.ci) return [result("formal", "tests", title, [{ message: "This repository has formal models but the runner has no Java, so they were not checked.", fix: "Install Java 11+ in the fence workflow." }], ctx)];
+    return [skip("formal", "tests", title, "no Java (TLC needs Java 11+)")];
+  }
+  const r = run(["python3", path.join(GATE, ".cartographer", "bin", "formal.py"), "check"]);
   const findings = r.stdout
     .split("\n")
     .filter((l) => l.startsWith("FAIL"))
     .map((l) => ({ message: l.replace(/^FAIL\s+/, ""), fix: "If the code changed on purpose, update the model; if not, the model found a bug." }));
+  if (r.code !== 0 && !findings.length) findings.push({ message: `formal.py exited ${r.code} without naming a failure: ${(r.stderr || r.stdout).trim().slice(-300)}`, fix: "Run python3 .cartographer/bin/formal.py check locally." });
   return [result("formal", "tests", title, findings, ctx)];
 }
 
 export function exceptionsCheck(ctx) {
-  const findings = expiredExceptions(ctx.exceptions, today()).map((e) => ({
+  const t = today();
+  const findings = expiredExceptions(ctx.exceptions, t).map((e) => ({
     file: ".fence/exceptions.json",
     message: `The exception for ${e.check}${e.file ? ` on ${e.file}` : ""} expired on ${e.expires} (${e.reason}).`,
     fix: "Fix what it covered, or have a person renew it.",
   }));
-  return [result("exceptions", "structure", "No expired exceptions", findings, ctx)];
+  for (const e of ctx.exceptions) {
+    const problems = exceptionProblems(e, t);
+    if (problems.length)
+      findings.push({ file: ".fence/exceptions.json", message: `The exception for ${e.check ?? "an unnamed check"}${e.file ? ` on ${e.file}` : ""} ${problems.join(", ")}, so it waives nothing.`, fix: "Give it a check, a file, a reason, a named approver and an expiry within 90 days." });
+    else if (e.file && !e.file.endsWith("/") && !existsSync(path.join(ROOT, e.file)))
+      findings.push({ file: ".fence/exceptions.json", message: `The exception for ${e.check} names ${e.file}, which no longer exists.`, fix: "Remove the exception." });
+  }
+  return [result("exceptions", "structure", "Exceptions are complete and current", findings, ctx)];
 }
 
-export const BUILTINS = { secrets, workflows, duplicates, dependencies, "map-coverage": mapCoverage, guard, formal, exceptions: exceptionsCheck };
+/** Every file the change adds, modifies, renames or deletes, plus untracked files. */
+function allChanged(base) {
+  const mb = mergeBase(base);
+  const tracked = run(["git", "diff", "--name-only", "--no-renames", mb]).stdout;
+  const untracked = run(["git", "ls-files", "--others", "--exclude-standard"]).stdout;
+  return [...new Set(`${tracked}\n${untracked}`.split("\n").filter(Boolean))];
+}
+
+export function gateIntegrity(ctx) {
+  const title = "Fence left alone: the change does not edit its own checks alongside other code";
+  // The pull request that installs the factory has no gate to protect yet; a code owner reviews it as a whole.
+  if (run(["git", "cat-file", "-e", `${mergeBase(ctx.base)}:.fence/fence.json`]).code !== 0)
+    return [skip("gate-integrity", "structure", title, "first install: the base branch has no fence yet")];
+  const findings = gateFindings(allChanged(ctx.base), ctx.config.gatePatterns);
+  return [result("gate-integrity", "structure", title, findings, ctx)];
+}
+
+export function testIntegrity(ctx) {
+  const mb = mergeBase(ctx.base);
+  const files = [];
+  for (const line of run(["git", "diff", "--name-status", "-M", mb]).stdout.split("\n").filter(Boolean)) {
+    const [st, a, b] = line.split("\t");
+    const status = st[0] === "R" ? "M" : st[0];
+    const file = b ?? a;
+    if (status === "D") files.push({ file, status });
+    else if (status === "M") {
+      const before = run(["git", "show", `${mb}:${a}`]).stdout;
+      const after = existsSync(path.join(ROOT, file)) ? readFileSync(path.join(ROOT, file), "utf8") : "";
+      const added = run(["git", "diff", "-U0", mb, "--", file]).stdout.split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++")).map((l) => l.slice(1));
+      files.push({ file, status, before, after, added });
+    } else if (status === "A") {
+      const p = path.join(ROOT, file);
+      files.push({ file, status, added: existsSync(p) ? readFileSync(p, "utf8").split("\n") : [] });
+    }
+  }
+  for (const file of run(["git", "ls-files", "--others", "--exclude-standard"]).stdout.split("\n").filter(Boolean)) {
+    const p = path.join(ROOT, file);
+    if (existsSync(p) && statSync(p).isFile()) files.push({ file, status: "A", added: readFileSync(p, "utf8").split("\n") });
+  }
+  return [result("test-integrity", "tests", "Tests kept: none deleted, emptied of assertions, or skipped", testIntegrityFindings(files), ctx)];
+}
+
+export const BUILTINS = {
+  secrets,
+  workflows,
+  duplicates,
+  dependencies,
+  "map-coverage": mapCoverage,
+  guard,
+  formal,
+  exceptions: exceptionsCheck,
+  "gate-integrity": gateIntegrity,
+  "test-integrity": testIntegrity,
+};
+// These run whatever .fence/fence.json lists: a configuration cannot switch off the checks that protect the gate.
+export const MANDATORY = ["exceptions", "gate-integrity", "test-integrity"];

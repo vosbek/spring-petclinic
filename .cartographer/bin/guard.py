@@ -64,6 +64,7 @@ METRICS = ["layerViolations", "cycles", "unmodeledDependencies", "hiddenDependen
 METRIC_LABEL = {"layerViolations": "dependencies that point the wrong way", "cycles": "circular dependencies",
                 "unmodeledDependencies": "dependencies the map does not know about", "hiddenDependencies": "files that keep changing together with no link in the map",
                 "untestedComponents": "parts of the code no test reaches", "checkErrors": "errors in the map"}
+RULES_FROM = None   # set by --rules-from
 ALLOW = re.compile(r"cartographer-allow:\s*([\w*.-]+)\s+until\s+(\d{4}-\d{2}-\d{2})\s+by\s+(\S+?)\s*[:\-]\s*(\S.*)")
 LOCKFILES = ["**/package-lock.json", "**/yarn.lock", "**/pnpm-lock.yaml", "**/poetry.lock", "**/Cargo.lock", "**/go.sum",
              "**/composer.lock", "**/Gemfile.lock", "**/*.min.js", "**/*.snap", "**/uv.lock"]
@@ -404,7 +405,10 @@ class Context:
         self.mapper = carto.Mapper(self.model.get("components", []))
         self.lidx = carto.layer_index(self.model)
         self.external = {c["id"] for c in self.model.get("components", []) if c.get("layer") == "external"}
-        self.config = carto.load(os.path.join(self.home, "guardrails.json")) or {"rules": [], "exceptions": []}
+        # Rules, exceptions and the ratchet baseline can come from another checkout (--rules-from), so CI judges a
+        # pull request by the base branch's rules, not by rules the pull request itself may have changed.
+        self.rules_home = RULES_FROM or self.home
+        self.config = carto.load(os.path.join(self.rules_home, "guardrails.json")) or {"rules": [], "exceptions": []}
         self.today = dt.date.today()
         self.agent = os.environ.get("CLAUDECODE") == "1" or bool(os.environ.get("CURSOR_AGENT"))   # running inside an agent's shell
         self._resolver = None
@@ -691,7 +695,7 @@ def metrics(ctx):
 
 
 def r_ratchet(rule, cs, ctx):
-    base = carto.load(os.path.join(ctx.home, "baseline.json"))
+    base = carto.load(os.path.join(ctx.rules_home, "baseline.json"))
     if not base:
         return [V(dict(rule, severity="warn"), None, None, "no baseline recorded", "Run `guard.py --baseline` and commit .cartographer/baseline.json.")]
     if ctx.graph and cs.sha and ctx.graph.get("commit"):
@@ -928,8 +932,15 @@ def evaluate(cs, ctx, rules=None, use_exceptions=True):
                 cands = [(ln, lines[ln - 1]) for ln in (v["line"], v["line"] - 1) if 0 < ln <= len(lines)]
             if v["type"] in FILE_LEVEL and v["path"] in by_path:
                 cands += by_path[v["path"]].added
+            fresh = set(by_path[v["path"]].added) if v["path"] in by_path else set()
             for ln, text in cands:
                 m = ALLOW.search(text)
+                if m and m.group(1) in (v["rule"], "*") and (ln, text) in fresh and not ctx.config.get("inlineAllowInChange"):
+                    # The author of a change cannot waive a rule for that same change: nobody checks the name it gives.
+                    notes.append({"rule": "exceptions", "severity": "warn", "path": v["path"], "line": ln, "type": "exception",
+                                  "message": "inline exception for %s, naming %s, was added in this change, so it does not count" % (v["rule"], m.group(3)),
+                                  "fix": "A person records the exception in .cartographer/guardrails.json, or it lands in its own reviewed change first."})
+                    break
                 if m and m.group(1) in (v["rule"], "*"):
                     try:
                         ok = dt.date.fromisoformat(m.group(2)) >= ctx.today
@@ -959,7 +970,7 @@ def report(cs, ctx, kept, suppressed, notes, errors, mode):
     info = [v for v in kept if v["severity"] == "info"]       # context for the reviewer: PR comment only, never a nag
     warn = [v for v in kept if v["severity"] not in ("block", "info")] + notes
     return {"kind": "cartograph-guard", "at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(), "mode": mode,
-            "label": cs.label, "files": len(cs.files), "rules": len(ctx.rules), "ok": not block,
+            "label": cs.label, "files": len(cs.files), "rules": len(ctx.rules), "ok": not block and not errors,
             "blocking": block, "warnings": warn, "info": info, "suppressed": suppressed, "errors": errors,
             "autoModel": not ctx.curated}
 
@@ -1544,6 +1555,7 @@ def main():
     ap.add_argument("--force", action="store_true", help="with --baseline: allow metrics to rise")
     ap.add_argument("--refresh", action="store_true", help="run collect.py and graph.py first so the ratchet sees this tree")
     ap.add_argument("--json", help="write the result as JSON to this path")
+    ap.add_argument("--rules-from", help="read guardrails.json and baseline.json from this .cartographer folder (CI passes the base branch's)")
     ap.add_argument("--markdown", help="write a PR comment section to this path")
     ap.add_argument("--quiet", action="store_true", help="print nothing when everything passes")
     ap.add_argument("--no-log", action="store_true")
@@ -1551,6 +1563,9 @@ def main():
     ap.add_argument("--simulated", action="store_true", help="with --log: show the history simulation instead of real activity")
     ap.add_argument("--last", type=int, default=50, help="with --log: number of events (default 50)")
     a = ap.parse_args()
+    global RULES_FROM
+    if a.rules_from:
+        RULES_FROM = os.path.abspath(a.rules_from)
     repo = os.path.abspath(a.repo)
     home = carto.home(repo)
     days = a.days or carto.load_config(repo).get("historyDays", 365)
@@ -1678,8 +1693,11 @@ def main():
     mode = "staged" if a.staged else "worktree" if a.worktree else "range"
     res = run(repo, mode, a.base, a.head, refresh=a.refresh, log=not a.no_log)
     if not res["rules"]:
+        # Still write the result, so a caller can tell "no rules" from "the guard never ran".
+        if a.json:
+            carto.save(a.json, res, pretty=True)
         if not a.quiet:
-            print("guard: no active rules in .cartographer/guardrails.json (try guard.py --suggest)")
+            print("guard: no active rules in .cartographer/guardrails.json, so nothing is enforced (try guard.py --suggest)")
         return 0
     carto.save(os.path.join(home, "facts", "guard", "last.json"), res)
     out = text_report(res, a.quiet)

@@ -59,13 +59,10 @@ svg.i.sm{width:14px;height:14px}
 .page-head h1{margin:0;display:flex;align-items:center;gap:10px;font-size:19px;line-height:28px;font-weight:600}
 .chip{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;background:var(--line-2);color:var(--ink-2);font-size:12px;font-weight:600}
 .page-head p{margin:2px 0 0;max-width:96ch;color:var(--ink-2);font-size:13.5px;line-height:21px}
-.story{flex:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0;padding:12px 24px;list-style:none;background:var(--panel);border-bottom:1px solid var(--line)}
-.story li{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--canvas)}
-.story li .h{display:flex;align-items:center;gap:8px;font-weight:600}
-.story li .b{margin-top:4px;color:var(--ink-2);font-size:12.5px;line-height:18px}
-.story li .w{margin-top:4px;color:var(--muted);font-size:11.5px;font-family:var(--mono)}
-.story .mk{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:10px;background:var(--blue);color:#fff;font-size:11px;font-weight:700}
-.story li.now{background:var(--blue);border-color:var(--blue);color:#fff}.story li.now .b,.story li.now .w{color:#dbe6fb}.story li.now .mk{background:#fff;color:var(--blue)}
+.story{flex:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:0;padding:10px 24px;background:var(--panel);border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.story .lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.story b{color:var(--ink);font-weight:600}.story code{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.story .sep{color:var(--muted)}.story .st.now b{color:var(--blue)}
 .work{flex:1;min-height:0;display:flex}
 .statusbar{grid-column:2;grid-row:2;display:flex;align-items:center;gap:16px;padding:0 14px;background:#eef1f6;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden}
 .statusbar .sep{width:1px;height:12px;background:var(--line)}
@@ -207,12 +204,12 @@ details.def pre{margin:0;padding:12px 14px;font:12px/18px var(--mono);color:var(
 .sf-block table{border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:8px}
 .sf-block th{padding:8px 12px;text-align:left;background:#f0f4fa;font-size:12px;color:var(--ink-2)}.sf-block td{padding:8px 12px;border-top:1px solid var(--line-2);vertical-align:top}
 
-@media (max-width:1180px){.mine{flex-basis:250px}.list{flex-basis:290px}.story{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1180px){.mine{flex-basis:250px}.list{flex-basis:290px}}
 @media (max-width:900px){
   .app{display:block;height:auto}.side-nav{display:block}.brand{display:flex;align-items:baseline;gap:12px;padding:12px 16px}.brand .repo{margin:0}
   .nav{display:flex;overflow-x:auto;gap:4px;padding:6px 10px}.nav .grp{display:none}.nav a{flex:none}.who{display:none}
   .work{display:block}.list,.mine{border:0;border-bottom:1px solid var(--line)}.rows,.detail,.mine-body,.page{overflow:visible}
-  .story{grid-template-columns:1fr}.cards{grid-template-columns:1fr}.detail-inner,.page-inner{padding:16px}.statusbar{display:none}}
+  .cards{grid-template-columns:1fr}.detail-inner,.page-inner{padding:16px}.statusbar{display:none}}
 </style>
 </head>
 <body>
@@ -354,14 +351,14 @@ details.def pre{margin:0;padding:12px 14px;font:12px/18px var(--mono);color:var(
     var p = S.provenance || {};
     if (!S.waiting.length) return "";
     var steps = [
-      ["✓", "Mapped", p.components ? "The codebase map splits " + esc(S.repo.name) + " into " + plural(p.components, "component", "components") + " in " + plural(p.layers, "part", "parts") + "." : "The codebase map describes how the code is organised.", p.mapOn ? "cartograph-survey · " + day(p.mapOn) : "cartograph-survey"],
-      ["✓", "Suggested", "The factory read the map and the git history and proposed " + plural(p.count || S.waiting.length, "rule", "rules") + (p.learned ? ", " + p.learned + " from past mistakes" : "") + ".", "guard.py --suggest" + (p.suggestedOn ? " · " + day(p.suggestedOn) : "")],
-      ["✓", "Tested on history", p.commits ? "Each rule was replayed on the last " + p.commits + " commits: would it have fired, and did those commits later need a fix?" : "Each rule was replayed on past commits where its kind allows.", "guard.py --replay"],
-      ["4", "You decide", LOCAL ? "Accept or reject each rule with a reason. One pull request carries your decisions, committed as you." : "A person accepts or rejects each rule from a checkout, with a reason.", LOCAL ? "Now" : "guard.py --serve"]
+      ["Mapped", p.components ? "into " + plural(p.components, "component", "components") + " in " + plural(p.layers, "part", "parts") : "by the codebase map", "cartograph-survey" + (p.mapOn ? ", " + day(p.mapOn) : "")],
+      ["Suggested", plural(p.count || S.waiting.length, "rule", "rules") + (p.learned ? ", " + p.learned + " from past mistakes" : ""), "guard.py --suggest"],
+      ["Tested", p.commits ? "on the last " + p.commits + " commits" : "on past commits where the rule's kind allows", "guard.py --replay"],
+      ["Decided by a person", LOCAL ? "you, here, with a reason for each" : "from a checkout, with a reason for each", LOCAL ? "now" : "guard.py --serve"]
     ];
-    return '<ol class="story" aria-label="Where these rules came from">' + steps.map(function (s, i) {
-      return '<li' + (i === 3 ? ' class="now"' : "") + '><div class="h"><span class="mk">' + s[0] + "</span>" + s[1] + '</div><div class="b">' + s[2] + '</div><div class="w">' + esc(s[3]) + "</div></li>";
-    }).join("") + "</ol>";
+    return '<p class="story" aria-label="Where these rules came from"><span class="lbl">Where these rules came from</span>' + steps.map(function (s, i) {
+      return '<span class="st' + (i === 3 ? ' now' : '') + '"><b>' + (i + 1) + ". " + s[0] + "</b> " + s[1] + ' <code>' + esc(s[2]) + "</code></span>";
+    }).join('<span class="sep" aria-hidden="true">›</span>') + "</p>";
   }
 
   function proposedView() {
