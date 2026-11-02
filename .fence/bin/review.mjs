@@ -372,7 +372,7 @@ export function buildReview({ report, files, results = [], testFiles = [], reach
     next.push(`The author fixes what ${c(r.id)} reports. If the check is wrong, a person runs \`/tend-fence\` and changes the check or records an exception, with a reason, a named approver and an end date.`);
   }
   // Skipped because nothing it covers changed: not a gap. Skipped for any other reason (a missing tool): a gap.
-  const nothingToCheck = (r) => /^no (changed|affected) files|^no verification\/|^first install/.test(r.summary ?? "");
+  const nothingToCheck = (r) => /^no (changed|affected) files|^no verification\/|^first install|^no package\.json/.test(r.summary ?? "");
   for (const r of skipped.filter((x) => !nothingToCheck(x))) blockers.push(`**Check did not run: ${r.title}** (${r.summary}). Nothing it covers is checked on this change.`);
   for (const r of checks.filter((x) => x.status !== "skip" && x.category === "tests" && x.run && "results" in x && !x.results))
     blockers.push(`**${r.title} wrote no per-test results,** so this page cannot say which of its tests ran.`);
@@ -627,9 +627,24 @@ export function resolver(tracked, read) {
   const exists = (p) => isFile.has(p) || dirs.has(p);
   const byModule = new Map();
   for (const f of tracked) if (/\.py$/.test(f)) (byModule.get(path.posix.basename(f, ".py")) ?? byModule.set(path.posix.basename(f, ".py"), []).get(path.posix.basename(f, ".py"))).push(f);
+  // Java and Kotlin: classes by package. A class uses another through an import, or by name alone when both are in the
+  // same package (in any source root, so a test in src/test/java uses the class it tests in src/main/java).
+  const JVM = /(?:^|\/)src\/(?:main|test)\/(?:java|kotlin)\/(.+)\/(\w+)\.(?:java|kt)$/;
+  const byPackage = new Map();
+  for (const f of tracked) {
+    const m = JVM.exec(f);
+    if (m) (byPackage.get(m[1]) ?? byPackage.set(m[1], []).get(m[1])).push({ file: f, name: m[2] });
+  }
+  const jvmUses = (f, text) => {
+    const me = JVM.exec(f);
+    if (!me) return [];
+    const words = new Set(text.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "").match(/\b[A-Z]\w*\b/g) ?? []);
+    const pkgs = new Set([me[1], ...[...text.matchAll(/^\s*import\s+(?:static\s+)?([\w.]+)\.(?:\*|[A-Z]\w*)\s*;?/gm)].map((m) => m[1].split(".").join("/"))]);
+    return [...pkgs].flatMap((p) => (byPackage.get(p) ?? []).filter((c) => c.file !== f && words.has(c.name)).map((c) => c.file));
+  };
   return (f) => {
     const text = read(f);
-    const out = new Set();
+    const out = new Set(jvmUses(f, text));
     for (const r of references(f, text, exists)) {
       if (r.startsWith("py:")) {
         const cands = (byModule.get(r.slice(3)) ?? []).filter((x) => !isTestFile(x));
