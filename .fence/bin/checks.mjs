@@ -382,7 +382,9 @@ export function duplicates(ctx) {
   const out = path.join(OUT_DIR, "jscpd");
   const pairsOf = (paths, cwd) => {
     // ignorePattern: code that repeats by necessity, such as a Java file's import list.
-    const ignore = [...(d.ignorePattern ? ["--ignore-pattern", d.ignorePattern] : []), ...(d.ignore?.length ? ["--ignore", d.ignore.join(",")] : [])];
+    // The base-branch checkout CI makes for the gate (.gate/) is a copy of the repository, not code to compare against.
+    const ignored = [...(d.ignore ?? []), "**/.gate/**"];
+    const ignore = [...(d.ignorePattern ? ["--ignore-pattern", d.ignorePattern] : []), "--ignore", ignored.join(",")];
     run(["npx", "--yes", "jscpd@4.0.5", ...paths, "--pattern", d.pattern ?? "**/*", "--min-tokens", String(d.minTokens ?? 50), ...ignore, "--silent", "--reporters", "json", "--output", out], { cwd });
     return clonePairs(readJson(path.join(out, "jscpd-report.json"), { duplicates: [] }).duplicates);
   };
@@ -401,7 +403,7 @@ export function duplicates(ctx) {
 
 export function dependencies(ctx) {
   const pkg = path.join(ROOT, "package.json");
-  if (!existsSync(pkg)) return [skip("dependencies", "patterns", "New dependencies are approved", "no package.json")];
+  if (!existsSync(pkg)) return [skip("dependencies", "patterns", "New dependencies are approved", "no package.json (this check covers npm only)")];
   const names = (p) => Object.keys({ ...(p?.dependencies ?? {}), ...(p?.devDependencies ?? {}) });
   const now = names(readJson(pkg, {}));
   const baseText = run(["git", "show", `${mergeBase(ctx.base)}:package.json`]).stdout;
