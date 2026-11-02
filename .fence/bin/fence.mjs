@@ -8,18 +8,21 @@
 //   node .fence/bin/fence.mjs --ci             CI mode (guard on base...HEAD)
 //   node .fence/bin/fence.mjs --base <ref>     compare with another base
 //   node .fence/bin/fence.mjs --md <file>      also write the markdown report there
+//   node .fence/bin/fence.mjs --phase stop     only the checks for one phase of the work: edit, stop, push or ci
+//   node .fence/bin/fence.mjs --phase edit --files src/a.ts   after an agent writes a file: that file only
 //
 // Configuration: .fence/fence.json (people own it). Report: .cache/fence/report.json and report.md.
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { BUILTINS, OUT_DIR, ROOT, changedFiles, commandCheck, readJson, run } from "./checks.mjs";
-import { CATEGORIES } from "./core.mjs";
+import { BUILTINS, GATE, MANDATORY, OUT_DIR, changedFiles, commandCheck, readJson, run } from "./checks.mjs";
+import { CATEGORIES, PHASES, inPhase } from "./core.mjs";
 
 const args = process.argv.slice(2);
 const has = (f) => args.includes(`--${f}`);
 const opt = (f) => (args.includes(`--${f}`) ? args[args.indexOf(`--${f}`) + 1] : undefined);
 
-const config = readJson(path.join(ROOT, ".fence", "fence.json"), null);
+// Configuration and exceptions come from the gate: the base branch in CI (FENCE_GATE_DIR), the working tree locally.
+const config = readJson(path.join(GATE, ".fence", "fence.json"), null);
 if (!config) {
   console.error("No .fence/fence.json. Run the onboarding script first.");
   process.exit(2);
@@ -32,12 +35,19 @@ const ctx = {
   ci: has("ci"),
   base: opt("base") ?? process.env.FENCE_BASE ?? config.base ?? defaultBase(),
   config,
-  exceptions: readJson(path.join(ROOT, ".fence", "exceptions.json"), []),
+  exceptions: readJson(path.join(GATE, ".fence", "exceptions.json"), []),
 };
 
-const all = [...(config.builtins ?? Object.keys(BUILTINS)).map((id) => ({ id, builtin: true })), ...(config.checks ?? []).map((c) => ({ ...c, builtin: false }))];
+const builtins = [...new Set([...(config.builtins ?? Object.keys(BUILTINS)), ...MANDATORY])];
+const all = [...builtins.map((id) => ({ id, builtin: true })), ...(config.checks ?? []).map((c) => ({ ...c, builtin: false }))];
 const only = opt("only")?.split(",");
-const selected = all.filter((c) => !only || only.includes(c.id));
+const phase = opt("phase");
+if (phase && !PHASES.includes(phase)) {
+  console.error(`--phase must be one of ${PHASES.join(", ")}`);
+  process.exit(2);
+}
+if (opt("files")) process.env.FENCE_FILES = opt("files");
+const selected = all.filter((c) => (!only || only.includes(c.id)) && (!phase || inPhase(c, phase)));
 
 function runChecks(list) {
   const out = [];
@@ -115,10 +125,14 @@ if (has("fix")) {
     regressions.push(...results.filter((r) => r.status === "fail" && before.has(r.id)).map((r) => r.id));
   }
 }
-mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(path.join(OUT_DIR, "report.json"), `${JSON.stringify({ head: run(["git", "rev-parse", "HEAD"]).stdout.trim(), base: ctx.base, fixed, regressions, results }, null, 2)}\n`);
+// A phase run from an agent hook keeps its own report, so it never stands in for the pull request's.
+const outDir = phase && phase !== "ci" ? path.join(OUT_DIR, "phase", phase) : OUT_DIR;
+mkdirSync(outDir, { recursive: true });
+// Where the fence's code and configuration came from: the base branch (CI), or the working tree.
+const gate = process.env.FENCE_GATE_DIR ? "base" : "working tree";
+writeFileSync(path.join(outDir, "report.json"), `${JSON.stringify({ head: run(["git", "rev-parse", "HEAD"]).stdout.trim(), base: ctx.base, gate, phase: phase ?? "all", fixed, regressions, results }, null, 2)}\n`);
 const md = markdown(results, fixed, regressions);
-writeFileSync(path.join(OUT_DIR, "report.md"), md);
+writeFileSync(path.join(outDir, "report.md"), md);
 if (opt("md")) writeFileSync(opt("md"), md);
 console.log(md);
 process.exit(results.some((r) => r.status === "fail") ? 1 : 0);

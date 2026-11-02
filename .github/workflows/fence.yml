@@ -1,11 +1,15 @@
 # The fence on every pull request, outside any agent. One sticky comment per pull request, by category.
 # Make "fence" a required check on the default branch. .fence/ and this file change only with a code owner.
+#
+# The gate comes from the base branch, not the pull request: the fence's scripts, its configuration and exceptions,
+# and the guard's rules and baseline are read from a second checkout of the base commit in .gate/. A pull request
+# that edits them is judged by the old ones, and the gate-integrity check refuses it unless it changes nothing else.
+# The job that runs the pull request's code has a read-only token; a separate job posts the comment.
 name: Fence
 on:
   pull_request:
 permissions:
   contents: read
-  pull-requests: write
 concurrency:
   group: fence-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -18,6 +22,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+      - name: The gate, from the base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .gate
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -29,32 +40,73 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
+      - name: Choose the gate
+        run: |
+          echo ".gate/" >> .git/info/exclude
+          if [ -f .gate/.fence/bin/fence.mjs ]; then
+            echo "GATE=.gate" >> "$GITHUB_ENV"
+          else
+            # The first pull request (onboarding) has no fence on its base branch yet. It runs its own, and says so.
+            echo "GATE=." >> "$GITHUB_ENV"
+            echo "::warning::The base branch has no fence yet, so this run uses the pull request's own. A code owner reviews it."
+          fi
       - name: Install the repository's tools
-        run: bash .fence/setup.sh
+        run: bash "$GATE/.fence/setup.sh"
       - name: Codebase facts for the structure rules
         run: |
           git fetch --no-tags origin "$BASE_REF"
-          python3 .cartographer/bin/collect.py > /dev/null
-          python3 .cartographer/bin/graph.py > /dev/null
+          if [ -f "$GATE/.cartographer/bin/collect.py" ]; then
+            python3 "$GATE/.cartographer/bin/collect.py" --repo . > /dev/null
+            python3 "$GATE/.cartographer/bin/graph.py" --repo . > /dev/null
+          fi
       - name: Fence
-        run: node .fence/bin/fence.mjs --ci --base "origin/$BASE_REF" --md .cache/fence/comment.md
-      - name: Comment
+        run: FENCE_GATE_DIR="$GATE" node "$GATE/.fence/bin/fence.mjs" --ci --base "origin/$BASE_REF" --md .cache/fence/fence.md
+      - name: Review guide
         if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p .cache/fence
+          # Built only from the fence's report and git: what ran, what each check looked at, what is left for a person.
+          if [ -f .cache/fence/report.json ] && [ -f "$GATE/.fence/bin/review.mjs" ]; then node "$GATE/.fence/bin/review.mjs" --base "origin/$BASE_REF" --out .cache/fence/comment.md > /dev/null
+          elif [ -f .cache/fence/fence.md ]; then cp .cache/fence/fence.md .cache/fence/comment.md; fi
+      - name: The gate was not touched while the pull request's code ran
+        if: env.GATE == '.gate'
+        run: |
+          [ -z "$(git -C .gate status --porcelain)" ] || { echo "::error::Files in the base-branch gate changed during the run, so its result cannot be trusted."; exit 1; }
+      - name: Keep the report
+        if: always()
         run: |
           mkdir -p .cache/fence
           [ -f .cache/fence/comment.md ] || echo "## Fence: BLOCKED (the fence did not finish; see the run)" > .cache/fence/comment.md
-          { echo "<!-- fence -->"; cat .cache/fence/comment.md; } > .cache/fence/body.md
           cat .cache/fence/comment.md >> "$GITHUB_STEP_SUMMARY"
-          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- fence -->")) | .id' | head -n 1)
-          if [ -n "$id" ]; then gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@.cache/fence/body.md > /dev/null
-          else gh api "repos/$REPO/issues/$PR/comments" -F body=@.cache/fence/body.md > /dev/null; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: fence-${{ github.event.pull_request.number }}
           path: .cache/fence/
           retention-days: 14
+
+  comment:
+    # Posts the report. It never checks out or runs the pull request's code, so its write token is not exposed to it.
+    needs: fence
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fence-${{ github.event.pull_request.number }}
+          path: report
+        continue-on-error: true
+      - name: Comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p report
+          [ -f report/comment.md ] || echo "## Fence: BLOCKED (the fence did not finish; see the run)" > report/comment.md
+          { echo "<!-- fence -->"; cat report/comment.md; } > body.md
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | startswith("<!-- fence -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@body.md > /dev/null
+          else gh api "repos/$REPO/issues/$PR/comments" -F body=@body.md > /dev/null; fi
