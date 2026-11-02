@@ -89,10 +89,12 @@ Imports are resolved by the same resolvers as `graph.py` (JVM, Python, JS/TS, Go
 There are two ways to make an exception. Both need a reason, an expiry date and an approver:
 - **Inline**, on the offending line or the line above it:
   `cartographer-allow: <rule-id> until 2027-01-31 by a.lead: <reason>`
-  File-level rules (`protected-paths`, `co-change`, `tests-required`, `interface-change`) also accept the marker anywhere in that file's added lines.
+  An inline marker counts only once it is on the base branch: one added in the same change is reported ("does not count") and suppresses nothing, because nobody checks the name it gives. Land it in its own reviewed change first, or use the config. A repository can opt back in with `"inlineAllowInChange": true` in `guardrails.json`.
 - **In config**, as `exceptions[]` in `guardrails.json`, with `path` as a selector.
 
-An expired or incomplete exception stops suppressing anything and is reported as a warning. Suppressed violations stay visible in the report and in the PR comment.
+An expired or incomplete exception stops suppressing anything and is reported as a warning.
+
+In CI the rules, exceptions and baseline come from the base branch: `guard.py --rules-from <base checkout>/.cartographer` (the fence passes it). A change cannot loosen the rules that judge it. With no active rules, `--json` still writes a result (`"rules": 0`) so a caller can tell "nothing enforced" from "never ran"; a rule that cannot be evaluated is an error and makes `ok` false. Suppressed violations stay visible in the report and in the PR comment.
 
 ## Proving rules: replay
 
@@ -175,7 +177,8 @@ Save run evidence under `.cartographer/runs/` so the page can be rebuilt. The ti
 | `guard.py --suggest [--write]` | Derives candidates from the facts and replays each one. Candidates come from layers, cycles, pinned snippets, strong co-change pairs (ranked by how often skipping the partner was followed by a fix to it), versioned migration folders, interface declarations, the repo's test convention, PR size and today's structural counts. |
 | `learn.py --propose` | Proposes rules for mistake classes that no current rule covers. |
 | `guard.py --proposals` | Lists `guardrails.proposed.json`. |
-| `guard.py --accept ID ...` and `--reject ID ...` | Moves proposals into `guardrails.json` or drops them. This is a human decision; agents run it only after the user approves. |
+| `guard.py --serve` | The rules workbench, for a person: every proposal with its replay evidence, Accept and Reject with a reason, then "Open pull request" (only the two rule files, committed as the person, opened with their `gh` login). Runs on 127.0.0.1 and refuses to start without a terminal. The agent hooks refuse it, `--accept` and `--reject`. `rules_app.py export OUT` writes the read-only copy CI publishes. |
+| `guard.py --accept ID ... --why TEXT` and `--reject ID ... --why TEXT` | The same decision from the command line, for a person. The reason, who decided (`--by`) and the replay evidence are recorded with the rule. |
 | `guard.py --baseline [--force]` | Records the ratchet counts. Without `--force` a count can only go down. |
 | `guard.py --table` | Prints the rule table for CLAUDE.md / AGENTS.md. |
 

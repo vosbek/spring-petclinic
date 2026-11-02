@@ -12,14 +12,15 @@
 // Configuration: .fence/fence.json (people own it). Report: .cache/fence/report.json and report.md.
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { BUILTINS, OUT_DIR, ROOT, changedFiles, commandCheck, readJson, run } from "./checks.mjs";
+import { BUILTINS, GATE, MANDATORY, OUT_DIR, changedFiles, commandCheck, readJson, run } from "./checks.mjs";
 import { CATEGORIES } from "./core.mjs";
 
 const args = process.argv.slice(2);
 const has = (f) => args.includes(`--${f}`);
 const opt = (f) => (args.includes(`--${f}`) ? args[args.indexOf(`--${f}`) + 1] : undefined);
 
-const config = readJson(path.join(ROOT, ".fence", "fence.json"), null);
+// Configuration and exceptions come from the gate: the base branch in CI (FENCE_GATE_DIR), the working tree locally.
+const config = readJson(path.join(GATE, ".fence", "fence.json"), null);
 if (!config) {
   console.error("No .fence/fence.json. Run the onboarding script first.");
   process.exit(2);
@@ -32,10 +33,11 @@ const ctx = {
   ci: has("ci"),
   base: opt("base") ?? process.env.FENCE_BASE ?? config.base ?? defaultBase(),
   config,
-  exceptions: readJson(path.join(ROOT, ".fence", "exceptions.json"), []),
+  exceptions: readJson(path.join(GATE, ".fence", "exceptions.json"), []),
 };
 
-const all = [...(config.builtins ?? Object.keys(BUILTINS)).map((id) => ({ id, builtin: true })), ...(config.checks ?? []).map((c) => ({ ...c, builtin: false }))];
+const builtins = [...new Set([...(config.builtins ?? Object.keys(BUILTINS)), ...MANDATORY])];
+const all = [...builtins.map((id) => ({ id, builtin: true })), ...(config.checks ?? []).map((c) => ({ ...c, builtin: false }))];
 const only = opt("only")?.split(",");
 const selected = all.filter((c) => !only || only.includes(c.id));
 
@@ -116,7 +118,9 @@ if (has("fix")) {
   }
 }
 mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(path.join(OUT_DIR, "report.json"), `${JSON.stringify({ head: run(["git", "rev-parse", "HEAD"]).stdout.trim(), base: ctx.base, fixed, regressions, results }, null, 2)}\n`);
+// Where the fence's code and configuration came from: the base branch (CI), or the working tree.
+const gate = process.env.FENCE_GATE_DIR ? "base" : "working tree";
+writeFileSync(path.join(OUT_DIR, "report.json"), `${JSON.stringify({ head: run(["git", "rev-parse", "HEAD"]).stdout.trim(), base: ctx.base, gate, fixed, regressions, results }, null, 2)}\n`);
 const md = markdown(results, fixed, regressions);
 writeFileSync(path.join(OUT_DIR, "report.md"), md);
 if (opt("md")) writeFileSync(opt("md"), md);

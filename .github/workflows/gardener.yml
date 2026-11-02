@@ -3,6 +3,9 @@
 # Pull requests from this repository only (no outside code runs with a write token). Nightly: the same on
 # the default branch, as a pull request. Set GARDENER_TOKEN so the fence runs again on the gardener's commits.
 # The two rules below were found by a TLA+ model of this job (see the template's verification/gardener).
+# On a pull request the setup, fence and fixers come from the base branch (.gate/), so the pull request cannot change
+# what the gardener runs with a write token; no credentials are on disk while its code runs; the token is used only in
+# the push step, with git hooks switched off.
 name: Gardener
 on:
   pull_request:
@@ -29,7 +32,13 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-          token: ${{ secrets.GARDENER_TOKEN || github.token }}
+          persist-credentials: false
+      - name: The gate, from the base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .gate
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -41,19 +50,35 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - run: bash .fence/setup.sh
+      - name: Choose the gate
+        run: |
+          echo ".gate/" >> .git/info/exclude
+          if [ -f .gate/.fence/bin/fence.mjs ]; then echo "GATE=.gate" >> "$GITHUB_ENV"
+          else echo "Nothing to garden: the base branch has no fence yet."; echo "GATE=" >> "$GITHUB_ENV"; fi
+      - if: env.GATE != ''
+        run: bash "$GATE/.fence/setup.sh"
       - name: Codebase facts
+        if: env.GATE != ''
         run: |
           git fetch --no-tags origin "$BASE_REF"
-          python3 .cartographer/bin/collect.py > /dev/null
-          python3 .cartographer/bin/graph.py > /dev/null
+          python3 "$GATE/.cartographer/bin/collect.py" --repo . > /dev/null
+          python3 "$GATE/.cartographer/bin/graph.py" --repo . > /dev/null
       - name: Fence with fixers
         id: fence
+        if: env.GATE != ''
         run: |
           set +e
-          node .fence/bin/fence.mjs --ci --fix --base "origin/$BASE_REF" --md .cache/fence/comment.md
+          FENCE_GATE_DIR="$GATE" node "$GATE/.fence/bin/fence.mjs" --ci --fix --base "origin/$BASE_REF" --md .cache/fence/comment.md
           echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: The gate was not touched while the pull request's code ran
+        if: env.GATE != ''
+        run: |
+          [ -z "$(git -C .gate status --porcelain)" ] || { echo "::error::Files in the base-branch gate changed during the run; nothing is committed."; exit 1; }
       - name: Commit the fixes
+        if: env.GATE != ''
+        env:
+          PUSH_TOKEN: ${{ secrets.GARDENER_TOKEN || github.token }}
+          REPO: ${{ github.repository }}
         run: |
           fixed=$(node -p "require('./.cache/fence/report.json').fixed.join(', ')")
           regressions=$(node -p "require('./.cache/fence/report.json').regressions.join(', ')")
@@ -66,9 +91,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Not "git add -A -- . ':(exclude).cache'": naming an ignored path makes git add exit 1 after staging.
           git add -A && git reset -q -- .cache
-          git commit -q -m "Gardener: $fixed" -m "Fixers run by the fence gardener. Every fence check ran again after them." 2>"$RUNNER_TEMP/git.err" \
+          git -c core.hooksPath=/dev/null commit -q -m "Gardener: $fixed" -m "Fixers run by the fence gardener. Every fence check ran again after them." 2>"$RUNNER_TEMP/git.err" \
             || { while read -r l; do echo "::error title=Gardener could not commit::$l"; done < "$RUNNER_TEMP/git.err"; exit 1; }
-          git push -q origin "HEAD:$HEAD_REF" 2>"$RUNNER_TEMP/git.err" \
+          # The token appears only here, never in .git/config, where the pull request's code could have read it.
+          git -c core.hooksPath=/dev/null push -q "${PUSH_URL:-https://x-access-token:${PUSH_TOKEN}@github.com/${REPO}.git}" "HEAD:$HEAD_REF" 2>"$RUNNER_TEMP/git.err" \
             || { while read -r l; do echo "::error title=Gardener could not push::$l"; done < "$RUNNER_TEMP/git.err"; exit 1; }
       - name: Label
         if: always()
@@ -81,7 +107,7 @@ jobs:
           label="fence: needs a person"
           gh label create "$label" --repo "$REPO" --color B60205 --description "The fence failed and the gardener could not fix it" 2>/dev/null || true
           # The REST API, not "gh pr edit": the latter can exit 1 after applying the label (it also queries classic projects).
-          if [ "$CODE" = "0" ]; then gh api -X DELETE "repos/$REPO/issues/$PR/labels/$(printf %s "$label" | jq -sRr @uri)" > /dev/null 2>&1 || true; exit 0; fi
+          if [ -z "$CODE" ] || [ "$CODE" = "0" ]; then gh api -X DELETE "repos/$REPO/issues/$PR/labels/$(printf %s "$label" | jq -sRr @uri)" > /dev/null 2>&1 || true; exit 0; fi
           gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=$label" > /dev/null
   nightly:
     if: github.event_name != 'pull_request'

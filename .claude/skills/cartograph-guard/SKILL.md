@@ -106,6 +106,7 @@ python3 .cartographer/bin/guard.py --worktree          # or --staged, or --base 
 Each line shows `BLOCK path:line [rule] message`, followed by `fix:`. Do what the fix says. If the rule is wrong for this one change, ask the user for an exception. There are two ways to record one:
 - **Inline**, on the offending line or the line above:
   `cartographer-allow: <rule-id> until YYYY-MM-DD by <approver>: <reason>`
+  It counts only once it is on the base branch; one added in the same change suppresses nothing. Never write one yourself.
 - **In `guardrails.json` → `exceptions`** (the user edits it):
   `{"rule", "path", "reason", "expires", "approvedBy"}`
 
