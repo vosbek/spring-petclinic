@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "id": "pet-age",
+  "title": "A pet's age in whole years",
+  "request": "Demo request, drafted by the coding agent for the owner to confirm: give every pet one rule for its age in whole years on a given day, so the clinic's screens and letters agree on how old a pet is.",
+  "owner": {
+    "name": "Matt",
+    "role": "owner of this petclinic fork"
+  },
+  "outcome": "Anyone who asks how old a pet is on a day gets the same whole number of years, including around birthdays and leap days.",
+  "for": [
+    "Clinic staff",
+    "Later features that need a pet's age, such as vaccination reminders"
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "text": "A pet's age on a day is the number of whole years since its birth date.",
+      "source": "assumption"
+    },
+    {
+      "id": "R2",
+      "text": "A year counts on the birthday itself, not before it.",
+      "source": "assumption"
+    },
+    {
+      "id": "R3",
+      "text": "A pet born on 29 February has its birthday on 1 March in years without a 29 February.",
+      "source": "assumption"
+    },
+    {
+      "id": "R4",
+      "text": "A pet with no birth date has no age.",
+      "source": "assumption"
+    }
+  ],
+  "examples": [
+    {
+      "id": "E1",
+      "rules": [
+        "R1",
+        "R2"
+      ],
+      "source": "assumption",
+      "given": "A pet born on 2020-03-15.",
+      "when": "Its age is asked on 2026-03-15.",
+      "then": "Its age is 6."
+    },
+    {
+      "id": "E2",
+      "rules": [
+        "R1",
+        "R2"
+      ],
+      "source": "assumption",
+      "given": "A pet born on 2020-03-15.",
+      "when": "Its age is asked on 2026-03-14.",
+      "then": "Its age is 5."
+    },
+    {
+      "id": "E3",
+      "rules": [
+        "R3"
+      ],
+      "source": "assumption",
+      "given": "A pet born on 2024-02-29.",
+      "when": "Its age is asked on 2025-02-28, and then on 2025-03-01.",
+      "then": "Its age is 0 on 2025-02-28 and 1 on 2025-03-01."
+    },
+    {
+      "id": "E4",
+      "rules": [
+        "R4"
+      ],
+      "source": "assumption",
+      "given": "A pet with no birth date.",
+      "when": "Its age is asked on any day.",
+      "then": "It has no age (null)."
+    }
+  ],
+  "outOfScope": [
+    {
+      "text": "Showing the age on any page: this change adds the rule only.",
+      "source": "assumption"
+    },
+    {
+      "text": "Ages in months for young animals.",
+      "source": "assumption"
+    }
+  ],
+  "questions": [],
+  "impact": [
+    {
+      "system": "spring-petclinic",
+      "examples": [
+        "E1",
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "components": [
+        "owner"
+      ],
+      "why": "Pets are owned by the owner component; the rule belongs on the Pet entity.",
+      "evidence": [
+        {
+          "path": "src/main/java/org/springframework/samples/petclinic/owner/Pet.java"
+        }
+      ],
+      "confirmedBy": ""
+    }
+  ]
+}
