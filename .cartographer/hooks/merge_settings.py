@@ -12,7 +12,14 @@ def merge(dst, src):
     for event, entries in src.get("hooks", {}).items():
         cur = dst.setdefault("hooks", {}).setdefault(event, [])
         for e in entries:
-            if json.dumps(e, sort_keys=True) not in {json.dumps(x, sort_keys=True) for x in cur}:
+            # An entry that runs the same command is ours from an earlier install: replace it (a new timeout, matcher).
+            mine = {h.get("command") for h in e.get("hooks", [])}
+            same = [i for i, x in enumerate(cur) if mine & {h.get("command") for h in x.get("hooks", [])}]
+            if same:
+                cur[same[0]] = e
+                for i in reversed(same[1:]):
+                    del cur[i]
+            elif json.dumps(e, sort_keys=True) not in {json.dumps(x, sort_keys=True) for x in cur}:
                 cur.append(e)
     for k, v in src.items():
         if k != "hooks":

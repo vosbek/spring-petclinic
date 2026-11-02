@@ -1,0 +1,7 @@
+#!/bin/sh
+# Before a push: the fence's push phase (everything up to the slower checks: mutation testing, copied code, formal
+# models), so a problem is found on this machine rather than on the pull request. Bypass once with: git push --no-verify
+root="$(git rev-parse --show-toplevel)"
+[ -f "$root/.fence/bin/fence.mjs" ] || exit 0
+command -v node >/dev/null 2>&1 || { echo "pre-push: node not found, so the fence's push checks did not run" >&2; exit 0; }
+cd "$root" && exec node .fence/bin/fence.mjs --phase push
