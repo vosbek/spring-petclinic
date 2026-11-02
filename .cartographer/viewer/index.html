@@ -80,10 +80,11 @@ main{padding:24px 32px 56px;display:flex;flex-direction:column;gap:24px;width:10
 .kind{font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:1px 6px;color:var(--ink-2);background:var(--hover);white-space:nowrap}
 .kind.gotcha{color:var(--md-fg);background:var(--md-bg)}.kind.invariant{color:var(--hi-fg);background:var(--hi-bg)}.kind.entry-point{color:var(--blue);background:var(--blue-tint)}
 .num{font-variant-numeric:tabular-nums}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));border:1px solid var(--line);border-radius:8px}
-.stat{padding:16px 20px;display:flex;flex-direction:column;gap:4px;box-shadow:inset -1px 0 0 var(--line)}
-.stat .v{font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums}
-.stat .k,.stat .s{font-size:12px;color:var(--muted)}
+.stats{display:flex;flex-wrap:wrap;gap:6px 0;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:14px;color:var(--ink-2)}
+.stat{padding:0 16px;border-left:1px solid var(--line)}
+.stat:first-child{padding-left:0;border-left:0}
+.stat .v{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat .s{color:var(--muted)}
 .bar{height:4px;background:var(--hover);border-radius:2px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--blue);border-radius:2px}
 .bar.t6{height:6px}
 .numcircle{flex:0 0 24px;height:24px;border-radius:12px;border:1px solid var(--blue-line);color:var(--blue);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;background:#fff}
@@ -568,11 +569,11 @@ VIEWS.overview = function () {
     h('ul', { class: 's13', style: 'margin:8px 0 0;padding-left:18px' }, ISSUES.slice(0, 30).map(function (i) { return h('li', null, h('code', null, i.where), ' — ', i.msg); }))));
 
   page.appendChild(h('section', { class: 'stats', 'aria-label': 'Key figures' },
-    stat('Components', M.components.length, internal.length + ' internal · ' + (M.components.length - internal.length) + ' external'),
-    stat('Commits · 90 days', R ? fmt(R.commits) : '—', R ? (pct(R.commits, R.prior) ? pct(R.commits, R.prior).t + ' vs prior 90 days' : 'no prior window') : 'history not collected'),
-    stat('Active authors · 90 days', R ? fmt(R.authors) : '—', R && R.newAuthors != null ? R.newAuthors + ' not active in the prior ' + ((R.historyDays || 365) - 90) + ' days' : ''),
-    M.risks.length || !F.defects ? stat('Open risks', M.risks.length, sevCount.high + ' high · ' + sevCount.medium + ' medium · ' + sevCount.low + ' low')
-      : stat('Fix commits', Math.round(100 * F.defects.fixCommits / Math.max(1, F.defects.commits)) + '%', fmt(F.defects.fixCommits) + ' in ' + F.defects.windowDays + ' days')));
+    stat('components', M.components.length, internal.length + ' internal · ' + (M.components.length - internal.length) + ' external'),
+    stat('commits in 90 days', R ? fmt(R.commits) : '—', R ? (pct(R.commits, R.prior) ? pct(R.commits, R.prior).t + ' vs prior 90 days' : 'no prior window') : 'history not collected'),
+    stat('active authors in 90 days', R ? fmt(R.authors) : '—', R && R.newAuthors != null ? R.newAuthors + ' not active in the prior ' + ((R.historyDays || 365) - 90) + ' days' : ''),
+    M.risks.length || !F.defects ? stat('open risks', M.risks.length, sevCount.high + ' high · ' + sevCount.medium + ' medium · ' + sevCount.low + ' low')
+      : stat('fix commits', Math.round(100 * F.defects.fixCommits / Math.max(1, F.defects.commits)) + '%', fmt(F.defects.fixCommits) + ' in ' + F.defects.windowDays + ' days')));
   page.appendChild(signalChips());
 
   var left = h('div', { class: 'col-main' }), right = h('aside', { class: 'col-side', style: 'gap:28px' });
@@ -653,7 +654,7 @@ function signalChips() {
   if (F.prHistory && F.prHistory.stale.length) chip('#/prs', 1, F.prHistory.stale.length + ' PR' + (F.prHistory.stale.length === 1 ? '' : 's') + ' waiting for review');
   return chips.length ? h('div', { class: 'chipline', 'aria-label': 'Signals' }, chips) : null;
 }
-function stat(k, v, s) { return h('div', { class: 'stat' }, h('span', { class: 'k' }, k), h('span', { class: 'v' }, v), h('span', { class: 's' }, s || '')); }
+function stat(k, v, s) { return h('div', { class: 'stat' }, h('span', { class: 'v' }, v), ' ', h('span', { class: 'k' }, k), s ? h('span', { class: 's' }, ' (' + s + ')') : null); }
 function targetOf(t) {
   var p = String(t || '').split(':'), kind = p[0], id = p.slice(1).join(':');
   if (kind === 'component') return { kind: 'Component', href: '#/component/' + encodeURIComponent(id) };
@@ -1015,10 +1016,10 @@ function changesActivity() {
   }
   var d = pct(R.commits, R.prior);
   wrap.appendChild(h('section', { class: 'stats', 'aria-label': 'Window totals' },
-    stat('Commits', fmt(R.commits), d ? d.t + ' vs prior 90 days' : ''),
-    stat('Files changed', fmt(R.filesChanged), fmt(R.filesAdded) + ' new · ' + fmt(R.filesDeleted) + ' deleted'),
-    stat('Authors', fmt(R.authors), R.newAuthors != null ? R.newAuthors + ' not active in the prior ' + ((R.historyDays || 365) - 90) + ' days' : ''),
-    stat('Lines', '+' + kfmt(R.linesAdded), '−' + kfmt(R.linesDeleted) + ' removed')));
+    stat('commits', fmt(R.commits), d ? d.t + ' vs prior 90 days' : ''),
+    stat('files changed', fmt(R.filesChanged), fmt(R.filesAdded) + ' new · ' + fmt(R.filesDeleted) + ' deleted'),
+    stat('authors', fmt(R.authors), R.newAuthors != null ? R.newAuthors + ' not active in the prior ' + ((R.historyDays || 365) - 90) + ' days' : ''),
+    stat('lines', '+' + kfmt(R.linesAdded), '−' + kfmt(R.linesDeleted) + ' removed')));
   var mx = Math.max.apply(null, R.weekly), pk = R.weekly.indexOf(mx);
   wrap.appendChild(h('section', { class: 'box pad section', style: 'padding:16px 20px;gap:12px' }, sectionHead('Weekly commits', h('span', { class: 'small muted' }, 'Peak ' + mx + ' · week of ' + shortDate(R.weekStarts[pk]))), weekChart(R.weekly)));
   var trend = M.components.filter(function (c) { return CF[c.id] && (CF[c.id].commits || CF[c.id].prior); }).map(function (c) { var f = CF[c.id]; return { c: c, f: f, d: pct(f.commits || 0, f.prior) }; })
@@ -1095,9 +1096,9 @@ function changesKnowledge() {
   var rows = M.components.filter(function (c) { return K.components[c.id] && c.layer !== 'external'; }).map(function (c) { return [c, K.components[c.id], CF[c.id] || {}]; })
     .sort(function (a, b) { return (b[1].orphanedPct - a[1].orphanedPct) || (a[1].activeBusFactor - b[1].activeBusFactor); });
   wrap.appendChild(h('section', { class: 'stats' },
-    stat('Orphaned areas', rows.filter(function (x) { return x[1].orphanedPct >= 50; }).length, 'half or more of changes by inactive people'),
-    stat('Single-owner areas', rows.filter(function (x) { return x[1].activeBusFactor <= 1 && (x[2].commits || 0) > 0; }).length, 'active bus factor 1, still changing'),
-    stat('Inactive contributors', K.inactiveAuthors, 'committed in the window, not in the last ' + K.inactiveDays + ' days')));
+    stat('orphaned areas', rows.filter(function (x) { return x[1].orphanedPct >= 50; }).length, 'half or more of changes by inactive people'),
+    stat('single-owner areas', rows.filter(function (x) { return x[1].activeBusFactor <= 1 && (x[2].commits || 0) > 0; }).length, 'active bus factor 1, still changing'),
+    stat('inactive contributors', K.inactiveAuthors, 'committed in the window, not in the last ' + K.inactiveDays + ' days')));
   wrap.appendChild(table(900, [th('Component'), th('Most active owner'), th('Orphaned share', 0, 'width:180px'), th('Bus factor', 1), th('Active', 1), th('Commits · 90d', 1), th('Last change')], rows.map(function (x) {
     var c = x[0], k = x[1], f = x[2], act = (f.owners || []).filter(function (o) { return o.active; })[0], top = (f.owners || [])[0];
     var warn = k.orphanedPct >= 50 || (k.activeBusFactor <= 1 && (f.commits || 0) > 0);
@@ -1118,8 +1119,8 @@ function changesAI() {
   wrap.appendChild(h('section', { class: 'stats' },
     stat('AI-assisted · 90d', A.recentShare + '%', fmt(A.recent) + ' commits'),
     stat('AI-assisted · ' + ((F.repo || {}).historyDays || 365) + 'd', A.share + '%', fmt(A.commits) + ' commits'),
-    stat('Fixed within ' + fu.days + ' days', fu.ai[1] ? fu.aiPct + '% AI' : '—', 'vs ' + fu.humanPct + '% other commits (' + fu.ai[1] + ' / ' + fu.human[1] + ' commits)'),
-    stat('Reverted', rv.ai[1] ? rv.aiPct + '% AI' : '—', 'vs ' + rv.humanPct + '% other commits')));
+    stat('fixed within ' + fu.days + ' days', fu.ai[1] ? fu.aiPct + '% AI' : '—', 'vs ' + fu.humanPct + '% other commits (' + fu.ai[1] + ' / ' + fu.human[1] + ' commits)'),
+    stat('reverted', rv.ai[1] ? rv.aiPct + '% AI' : '—', 'vs ' + rv.humanPct + '% other commits')));
   var mx = Math.max.apply(null, A.monthly.map(function (m) { return m.total; }).concat([1]));
   wrap.appendChild(h('section', { class: 'box pad section', style: 'padding:16px 20px;gap:12px' },
     sectionHead('AI-assisted commits by month', h('span', { class: 'row small', style: 'gap:14px;color:var(--ink-3)' }, h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'width:10px;height:10px;border-radius:2px;background:var(--blue)' }), 'AI-assisted'), h('span', { class: 'row', style: 'gap:6px' }, h('span', { style: 'width:10px;height:10px;border-radius:2px;background:#D5DAE1' }), 'Other'))),
@@ -1158,11 +1159,11 @@ VIEWS.structure = function (r) {
   var viol = S.compEdges.filter(function (e) { return e.violation; });
   var langs = S.languages, LN = { jvm: 'JVM', py: 'Python', js: 'JS/TS', go: 'Go', cs: 'C#' };
   page.appendChild(h('section', { class: 'stats' },
-    stat('Files scanned', fmt(S.filesScanned), Object.keys(langs).map(function (k) { return LN[k] + ' ' + langs[k].files; }).join(' · ')),
-    stat('Component dependencies', S.compEdges.length, unmodeled.length + ' not in the model'),
-    stat('Model edges unseen', unseen.length, 'of ' + S.verification.filter(function (v) { return v.status !== 'n/a'; }).length + ' checkable'),
-    stat('Cycles · violations', S.cycles.length + ' · ' + viol.length, 'between components'),
-    stat('Interfaces', fmt(S.apiTotal), 'routes, tools, topics, jobs, tables')));
+    stat('files scanned', fmt(S.filesScanned), Object.keys(langs).map(function (k) { return LN[k] + ' ' + langs[k].files; }).join(' · ')),
+    stat('component dependencies', S.compEdges.length, unmodeled.length + ' not in the model'),
+    stat('model edges unseen', unseen.length, 'of ' + S.verification.filter(function (v) { return v.status !== 'n/a'; }).length + ' checkable'),
+    stat('cycles · violations', S.cycles.length + ' · ' + viol.length, 'between components'),
+    stat('interfaces', fmt(S.apiTotal), 'routes, tools, topics, jobs, tables')));
   page.appendChild(tabsBar('#/structure', tab, [['dependencies', 'Dependencies', S.compEdges.length], ['interfaces', 'Interfaces', S.apiTotal], ['tests', 'Test reach', S.untested.length ? S.untested.length + ' untested' : null], ['libraries', 'Libraries', S.external.length]]));
   if (tab === 'dependencies') {
     if (S.cycles.length) page.appendChild(h('div', { class: 'callout text s13' }, h('strong', null, 'Dependency cycle' + (S.cycles.length > 1 ? 's' : '') + ': '), S.cycles.map(function (cy, i) { return [i ? '; ' : '', cy.map(cname).join(' ⇄ ')]; }), '. Components in a cycle can only be changed, tested and released together.'));
@@ -1234,10 +1235,10 @@ VIEWS.prs = function () {
   if (H) {
     var cyc = H.cycleHours.n ? ['Cycle time (median)', hrs(H.cycleHours.median), 'open → merge · p75 ' + hrs(H.cycleHours.p75)] : H.leadHours.n ? ['Lead time (median)', hrs(H.leadHours.median), 'first commit → merge · ' + H.leadHours.n + ' merge commits'] : ['Cycle time', '—', 'needs GitHub API or merge commits'];
     page.appendChild(h('section', { class: 'stats' },
-      stat('Merged · 90d', fmt(H.merged), H.botMerged ? H.botMerged + ' by bots' : 'none by bots'),
-      stat('Median size', H.medianLines == null ? '—' : fmt(H.medianLines) + ' lines', ['XS', 'S', 'M', 'L', 'XL'].map(function (k) { return k + ' ' + H.sizes[k]; }).join(' · ')),
+      stat('merged · 90d', fmt(H.merged), H.botMerged ? H.botMerged + ' by bots' : 'none by bots'),
+      stat('median size', H.medianLines == null ? '—' : fmt(H.medianLines) + ' lines', ['XS', 'S', 'M', 'L', 'XL'].map(function (k) { return k + ' ' + H.sizes[k]; }).join(' · ')),
       stat(cyc[0], cyc[1], cyc[2]),
-      stat('First review (median)', H.firstReviewHours.n ? hrs(H.firstReviewHours.median) : '—', H.firstReviewHours.n ? 'p75 ' + hrs(H.firstReviewHours.p75) : 'needs GitHub API'),
+      stat('first review (median)', H.firstReviewHours.n ? hrs(H.firstReviewHours.median) : '—', H.firstReviewHours.n ? 'p75 ' + hrs(H.firstReviewHours.p75) : 'needs GitHub API'),
       stat('AI-assisted PRs', H.aiShare == null ? '—' : H.aiShare + '%', 'of human-authored merged PRs')));
     var mx = Math.max.apply(null, H.weekly.concat([1]));
     var left = h('section', { class: 'box pad section', style: 'flex:999 1 520px;min-width:0;padding:16px 20px;gap:12px' }, sectionHead('Merged per week', h('span', { class: 'small muted' }, 'Sources: ' + H.sources.join(' + '))), weekChartGeneric(H.weekly, H.weekStarts));
@@ -1505,11 +1506,11 @@ VIEWS.guard = function (r) {
   var L = G.lessons, gaps = L ? L.classes.filter(function (c) { return c.coverage === 'gap'; }) : [];
   var proven = active.filter(function (x) { var q = rp[x.rule || x.id]; return q && q.followedByFixOrRevert; }).length;
   page.appendChild(h('section', { class: 'stats' },
-    stat('Active rules', active.length, blocks + ' block · ' + (active.length - blocks) + ' warn'),
-    stat('Last run', G.last ? (G.last.ok ? 'Passed' : G.last.blocking.length + ' blocking') : '—', G.last ? G.last.label : 'guard.py has not run here'),
-    stat('Ratchet', over.length ? over.length + ' above' : 'Holding', Object.keys(G.current).length + ' structural counts vs baseline'),
-    stat('Proven on history', proven + ' of ' + active.length, G.replay ? G.replay.window.commits + ' commits replayed' : 'run guard.py --replay'),
-    stat('Exceptions', exValid.length, (exSoon.length ? exSoon.length + ' expiring soon' : 'none expiring') + (exBad.length ? ' · ' + exBad.length + ' expired' : ''))));
+    stat('active rules', active.length, blocks + ' block · ' + (active.length - blocks) + ' warn'),
+    stat('last run', G.last ? (G.last.ok ? 'Passed' : G.last.blocking.length + ' blocking') : '—', G.last ? G.last.label : 'guard.py has not run here'),
+    stat('ratchet', over.length ? over.length + ' above' : 'Holding', Object.keys(G.current).length + ' structural counts vs baseline'),
+    stat('proven on history', proven + ' of ' + active.length, G.replay ? G.replay.window.commits + ' commits replayed' : 'run guard.py --replay'),
+    stat('exceptions', exValid.length, (exSoon.length ? exSoon.length + ' expiring soon' : 'none expiring') + (exBad.length ? ' · ' + exBad.length + ' expired' : ''))));
   page.appendChild(tabsBar('#/guard', tab, [['rules', 'Rules', active.length], ['proof', 'Proof', G.replay ? G.replay.window.commits + ' commits' : null], ['lessons', 'Lessons', gaps.length ? gaps.length + ' gaps' : null], ['exceptions', 'Exceptions & proposals', (G.exceptions.length + G.proposed.length) || null], ['activity', 'Activity', ((G.events || []).length + (G.simulated || []).length) || null]]));
 
   if (tab === 'rules') {
