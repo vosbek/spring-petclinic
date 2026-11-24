@@ -1,0 +1,12 @@
+{
+  "name": "spring-petclinic",
+  "stack": "java",
+  "commands": {
+    "prepare": "mvn -q -B -DskipTests test-compile",
+    "test": "mvn -q -B test"
+  },
+  "hidden": {
+    "command": "mvn -q -B test"
+  },
+  "box": "host"
+}
