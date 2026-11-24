@@ -1,0 +1,37 @@
+# Deploys Pet Clinic to factory-petclinic.fly.dev after its tests pass, on every push to main.
+# A push to main only happens when a person merges a pull request. FLY_API_TOKEN is a deploy token
+# scoped to the factory-petclinic app only.
+name: Deploy to Fly
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-petclinic
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - run: ./mvnw -B verify
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only --env FM_COMMIT=${{ github.sha }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

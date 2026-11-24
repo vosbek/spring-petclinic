@@ -1,0 +1,22 @@
+# Pet Clinic's live preview. Deployed by .github/workflows/deploy.yml on every push to main
+# (a person merging a pull request). In-memory H2 database: sample data resets on each deploy.
+app = "factory-petclinic"
+primary_region = "iad"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "60s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

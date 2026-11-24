@@ -1,0 +1,8 @@
+target
+build
+.gradle
+.git
+.github
+k8s
+docs
+verification
