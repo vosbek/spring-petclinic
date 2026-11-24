@@ -1,0 +1,596 @@
+{
+  "summary": {
+    "text": "Spring PetClinic is a server-rendered Spring Boot 4 / Spring MVC web app for a veterinary clinic. Staff find, create and edit pet owners, add and edit their pets, book, change and cancel visits for a pet, and browse the list of vets and their specialties (as HTML or as a JSON/XML resource). Data is stored with Spring Data JPA in H2 by default (MySQL and PostgreSQL via profiles); pages are Thymeleaf templates with Bootstrap styling and i18n message bundles. The vet list is cached with JCache/Caffeine. The repo also carries factory/cartographer tooling (.fence, .cartographer, skills, workflows) that is not part of the app.",
+    "sources": [
+      "pom.xml",
+      "build.gradle",
+      "src/main/resources/application.properties",
+      "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+    ]
+  },
+  "stack": {
+    "languages": [
+      "Java",
+      "Python",
+      "JavaScript",
+      "TypeScript"
+    ],
+    "buildTool": "maven",
+    "sources": [
+      "pom.xml",
+      "build.gradle"
+    ]
+  },
+  "commands": {
+    "build": "./mvnw package",
+    "test": "./mvnw test",
+    "run": "./mvnw spring-boot:run",
+    "sources": [
+      "README.md",
+      "pom.xml"
+    ]
+  },
+  "areas": [
+    {
+      "name": "app-bootstrap",
+      "purpose": "Spring Boot entry point and GraalVM native-image runtime hints.",
+      "paths": [
+        "src/main/java/org/springframework/samples/petclinic/*.java"
+      ],
+      "entryPoints": [
+        "src/main/java/org/springframework/samples/petclinic/PetClinicApplication.java"
+      ],
+      "keyFiles": [
+        "src/main/java/org/springframework/samples/petclinic/PetClinicRuntimeHints.java"
+      ],
+      "dependsOn": [
+        "shared-model",
+        "vets"
+      ],
+      "risk": "low",
+      "sources": [
+        "src/main/java/org/springframework/samples/petclinic/PetClinicApplication.java"
+      ]
+    },
+    {
+      "name": "shared-model",
+      "purpose": "Base JPA entity classes (id, named entity, person) reused by owner and vet entities.",
+      "paths": [
+        "src/main/java/org/springframework/samples/petclinic/model/**"
+      ],
+      "entryPoints": [],
+      "keyFiles": [
+        "src/main/java/org/springframework/samples/petclinic/model/BaseEntity.java",
+        "src/main/java/org/springframework/samples/petclinic/model/Person.java",
+        "src/main/java/org/springframework/samples/petclinic/model/NamedEntity.java"
+      ],
+      "dependsOn": [],
+      "risk": "medium",
+      "riskWhy": "Every entity inherits from these, so changes ripple everywhere.",
+      "sources": [
+        "src/main/java/org/springframework/samples/petclinic/model/BaseEntity.java"
+      ]
+    },
+    {
+      "name": "owners-pets-visits",
+      "purpose": "Owner search/create/edit, pet create/edit, and visit booking, editing and cancelling. Owner is the aggregate root that cascades to pets and visits.",
+      "paths": [
+        "src/main/java/org/springframework/samples/petclinic/owner/**"
+      ],
+      "entryPoints": [
+        "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/PetController.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java"
+      ],
+      "keyFiles": [
+        "src/main/java/org/springframework/samples/petclinic/owner/Owner.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/Pet.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/Visit.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/OwnerRepository.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java"
+      ],
+      "dependsOn": [
+        "shared-model",
+        "database-schema",
+        "web-ui"
+      ],
+      "risk": "high",
+      "riskWhy": "Core business logic and writes; pet-name uniqueness is enforced both in code and by a DB constraint, and visit date rules (must be in the future) live in controllers.",
+      "sources": [
+        "src/main/java/org/springframework/samples/petclinic/owner/PetController.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java"
+      ]
+    },
+    {
+      "name": "vets",
+      "purpose": "Read-only list of vets and their specialties, as a paginated HTML page and as a JSON/XML resource; repository results are cached.",
+      "paths": [
+        "src/main/java/org/springframework/samples/petclinic/vet/**"
+      ],
+      "entryPoints": [
+        "src/main/java/org/springframework/samples/petclinic/vet/VetController.java"
+      ],
+      "keyFiles": [
+        "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java",
+        "src/main/java/org/springframework/samples/petclinic/vet/Vet.java",
+        "src/main/java/org/springframework/samples/petclinic/vet/Vets.java"
+      ],
+      "dependsOn": [
+        "shared-model",
+        "system-config",
+        "database-schema",
+        "web-ui"
+      ],
+      "risk": "low",
+      "sources": [
+        "src/main/java/org/springframework/samples/petclinic/vet/VetController.java",
+        "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java"
+      ]
+    },
+    {
+      "name": "system-config",
+      "purpose": "Cross-cutting web and cache configuration plus the welcome page and a deliberate crash endpoint (/oups).",
+      "paths": [
+        "src/main/java/org/springframework/samples/petclinic/system/**"
+      ],
+      "entryPoints": [
+        "src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java",
+        "src/main/java/org/springframework/samples/petclinic/system/CrashController.java"
+      ],
+      "keyFiles": [
+        "src/main/java/org/springframework/samples/petclinic/system/WebConfiguration.java",
+        "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java"
+      ],
+      "dependsOn": [],
+      "risk": "low",
+      "sources": [
+        "src/main/java/org/springframework/samples/petclinic/system/WebConfiguration.java",
+        "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java"
+      ]
+    },
+    {
+      "name": "database-schema",
+      "purpose": "Per-database schema and seed data (h2, mysql, postgres) loaded at startup; Hibernate DDL is off.",
+      "paths": [
+        "src/main/resources/db/**",
+        "src/main/resources/application*.properties"
+      ],
+      "entryPoints": [
+        "src/main/resources/application.properties"
+      ],
+      "keyFiles": [
+        "src/main/resources/db/h2/schema.sql",
+        "src/main/resources/db/h2/data.sql"
+      ],
+      "dependsOn": [],
+      "risk": "high",
+      "riskWhy": "Three parallel schemas must stay in sync with entities; unique_owner_pet_name is relied on by PetController.",
+      "sources": [
+        "src/main/resources/application.properties",
+        "src/main/resources/db/h2/schema.sql"
+      ]
+    },
+    {
+      "name": "web-ui",
+      "purpose": "Thymeleaf templates, i18n message bundles, SCSS and static assets (CSS, fonts, images).",
+      "paths": [
+        "src/main/resources/templates/**",
+        "src/main/resources/messages/**",
+        "src/main/resources/static/**",
+        "src/main/scss/**"
+      ],
+      "entryPoints": [
+        "src/main/resources/templates/welcome.html"
+      ],
+      "keyFiles": [
+        "src/main/resources/templates/fragments/layout.html",
+        "src/main/resources/templates/error.html"
+      ],
+      "dependsOn": [],
+      "risk": "low",
+      "sources": [
+        "pom.xml"
+      ]
+    },
+    {
+      "name": "tests",
+      "purpose": "JUnit 5 unit, MVC slice and integration tests (H2, MySQL and PostgreSQL via Testcontainers), plus a JMeter plan.",
+      "paths": [
+        "src/test/**"
+      ],
+      "entryPoints": [],
+      "keyFiles": [
+        "src/test/java/org/springframework/samples/petclinic/PetClinicIntegrationTests.java",
+        "src/test/java/org/springframework/samples/petclinic/service/ClinicServiceTests.java"
+      ],
+      "dependsOn": [
+        "owners-pets-visits",
+        "vets",
+        "system-config"
+      ],
+      "risk": "low",
+      "sources": [
+        "pom.xml"
+      ]
+    },
+    {
+      "name": "factory-tooling",
+      "purpose": "Not app code: fence checks, cartographer scripts/hooks, agent skills, CI workflows and verification artefacts that govern how changes are made.",
+      "paths": [
+        ".fence/**",
+        ".cartographer/**",
+        ".agents/**",
+        ".claude/**",
+        ".github/**",
+        "verification/**",
+        "docs/**"
+      ],
+      "entryPoints": [
+        ".fence/bin/fence.mjs"
+      ],
+      "keyFiles": [
+        ".fence/bin/checks.mjs",
+        ".fence/bin/java-mutation.mjs"
+      ],
+      "dependsOn": [],
+      "risk": "high",
+      "riskWhy": "raised by the path rule: .github/workflows/cartographer-nightly.yml matches **/.github/workflows/**",
+      "sources": [
+        "pom.xml"
+      ]
+    }
+  ],
+  "domain": [
+    {
+      "term": "Owner",
+      "meaning": "A pet owner (a Person); aggregate root holding pets, found by last-name prefix.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/owner/Owner.java"
+      ]
+    },
+    {
+      "term": "Pet",
+      "meaning": "An animal belonging to an owner, with name, birth date, type and visits; name is unique per owner.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/owner/Pet.java",
+        "src/main/resources/db/h2/schema.sql"
+      ]
+    },
+    {
+      "term": "PetType",
+      "meaning": "Species of a pet (table 'types').",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/owner/PetController.java"
+      ]
+    },
+    {
+      "term": "Visit",
+      "meaning": "A booked appointment for a pet with a date and description; 'upcoming' means date is after today and only upcoming visits can be edited or cancelled.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/owner/Visit.java",
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java"
+      ]
+    },
+    {
+      "term": "minVisitDate",
+      "meaning": "Earliest bookable date: tomorrow.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java"
+      ]
+    },
+    {
+      "term": "Vet",
+      "meaning": "A veterinarian with zero or more specialties.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/vet/VetController.java"
+      ]
+    },
+    {
+      "term": "Vets",
+      "meaning": "Wrapper object holding a vet list so /vets serialises cleanly to JSON/XML.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/vet/VetController.java"
+      ]
+    },
+    {
+      "term": "Specialty",
+      "meaning": "A vet's area of expertise (table 'specialties' joined by vet_specialties).",
+      "files": [
+        "src/main/resources/db/h2/schema.sql"
+      ]
+    },
+    {
+      "term": "unique_owner_pet_name",
+      "meaning": "DB constraint on (owner_id, name); a violation is turned into a 'duplicate' field error.",
+      "files": [
+        "src/main/resources/db/h2/schema.sql",
+        "src/main/java/org/springframework/samples/petclinic/owner/PetController.java"
+      ]
+    },
+    {
+      "term": "vets cache",
+      "meaning": "JCache cache named 'vets' used by VetRepository.findAll.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java",
+        "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java"
+      ]
+    },
+    {
+      "term": "lang",
+      "meaning": "Request parameter that switches locale; stored in the session, default English.",
+      "files": [
+        "src/main/java/org/springframework/samples/petclinic/system/WebConfiguration.java"
+      ]
+    },
+    {
+      "term": "database",
+      "meaning": "Property choosing h2, mysql or postgres schema/data scripts.",
+      "files": [
+        "src/main/resources/application.properties"
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "name": "find-owner",
+      "steps": [
+        {
+          "text": "GET /owners/find shows the search form.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+          ]
+        },
+        {
+          "text": "GET /owners?lastName=... strips the name and queries findByLastNameStartingWith with page size 5.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+          ]
+        },
+        {
+          "text": "Out-of-range page redirects to page 1; no match rejects lastName 'notFound' and re-shows the form; exactly one match redirects to /owners/{id}; several render the paginated list.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+          ]
+        },
+        {
+          "text": "Templates render the form, list or details.",
+          "area": "web-ui",
+          "files": [
+            "src/main/resources/templates/owners/ownersList.html"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "create-or-edit-owner",
+      "steps": [
+        {
+          "text": "GET /owners/new or /owners/{id}/edit shows the form; the id fields are disallowed from binding.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+          ]
+        },
+        {
+          "text": "POST validates the Owner; errors re-show the form with an error flash.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+          ]
+        },
+        {
+          "text": "On edit, a form id that differs from the URL id is rejected with a redirect back to the edit form.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+          ]
+        },
+        {
+          "text": "The owner is saved and the user is redirected to /owners/{id} with a flash message.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "add-or-edit-pet",
+      "steps": [
+        {
+          "text": "Model attributes load the owner, the pet types list and (for edit) the pet from the owner.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/PetController.java"
+          ]
+        },
+        {
+          "text": "POST /owners/{id}/pets/new or /pets/{petId}/edit validates with PetValidator, rejects a duplicate name for the owner and a birth date in the future.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/PetController.java",
+            "src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java"
+          ]
+        },
+        {
+          "text": "The pet is added to or updated on the owner and saved with saveAndFlush; a unique_owner_pet_name violation becomes a 'duplicate' field error.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/PetController.java",
+            "src/main/resources/db/h2/schema.sql"
+          ]
+        },
+        {
+          "text": "Redirect to the owner page with a flash message.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/PetController.java"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "book-visit",
+      "steps": [
+        {
+          "text": "loadPetWithVisit loads owner and pet (IllegalArgumentException if missing), and attaches a fresh Visit dated tomorrow to the pet.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java"
+          ]
+        },
+        {
+          "text": "POST /owners/{o}/pets/{p}/visits/new rejects a date that is not after today and validates description.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java",
+            "src/main/java/org/springframework/samples/petclinic/owner/Visit.java"
+          ]
+        },
+        {
+          "text": "owner.addVisit(petId, visit) and owners.save persist the visit through cascade; redirect with 'Your visit has been booked'.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java",
+            "src/main/java/org/springframework/samples/petclinic/owner/Owner.java"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "change-or-cancel-visit",
+      "steps": [
+        {
+          "text": "Owner, pet and visit are looked up; missing ones give 404, past visits give 400.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java"
+          ]
+        },
+        {
+          "text": "Edit POST re-checks the date is in the future, copies date and description onto the stored visit and saves the owner.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java"
+          ]
+        },
+        {
+          "text": "Cancel POST removes the visit from the pet (orphan removal) and saves the owner; redirect to the owner page.",
+          "area": "owners-pets-visits",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/owner/VisitChangeController.java",
+            "src/main/java/org/springframework/samples/petclinic/owner/Pet.java"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "list-vets",
+      "steps": [
+        {
+          "text": "GET /vets.html reads a page of 5 vets from VetRepository (cached under 'vets'); out-of-range pages redirect to page 1.",
+          "area": "vets",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/vet/VetController.java",
+            "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java"
+          ]
+        },
+        {
+          "text": "GET /vets returns all vets wrapped in Vets as a response body (JSON/XML).",
+          "area": "vets",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/vet/VetController.java"
+          ]
+        },
+        {
+          "text": "The cache 'vets' is created with statistics enabled at startup.",
+          "area": "system-config",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "startup-and-locale",
+      "steps": [
+        {
+          "text": "PetClinicApplication starts Spring Boot; application.properties picks db/{database} schema and data scripts, with Hibernate DDL disabled.",
+          "area": "app-bootstrap",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/PetClinicApplication.java",
+            "src/main/resources/application.properties"
+          ]
+        },
+        {
+          "text": "On each request LocaleChangeInterceptor honours ?lang=, stored by a session locale resolver (default English).",
+          "area": "system-config",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/system/WebConfiguration.java"
+          ]
+        },
+        {
+          "text": "GET / renders the welcome page; GET /oups throws on purpose to show the error page.",
+          "area": "system-config",
+          "files": [
+            "src/main/java/org/springframework/samples/petclinic/system/WelcomeController.java",
+            "src/main/java/org/springframework/samples/petclinic/system/CrashController.java"
+          ]
+        }
+      ]
+    }
+  ],
+  "tests": {
+    "dirs": [
+      "src/test/java",
+      "src/test/jmeter"
+    ],
+    "frameworks": [
+      "junit5",
+      "testcontainers",
+      "spring-boot-test",
+      "mockmvc"
+    ],
+    "gaps": [
+      {
+        "text": "MySQL and PostgreSQL integration tests need Docker/Testcontainers, so they may not run everywhere.",
+        "sources": [
+          "pom.xml"
+        ]
+      },
+      {
+        "text": "Pitest mutation testing is configured but not bound to the build; it runs only through the fence.",
+        "sources": [
+          "pom.xml"
+        ]
+      }
+    ]
+  },
+  "unsure": [
+    {
+      "what": "Exact test coverage of each controller branch",
+      "why": "Test bodies were not read; only their file names and the build config."
+    },
+    {
+      "what": "Whether Gradle or Maven is the primary build",
+      "why": "Both pom.xml and build.gradle exist; the scan says maven and the README lists both."
+    },
+    {
+      "what": "Contents of the mysql/postgres schemas and the Vet/PetValidator internals",
+      "why": "Not opened in detail."
+    }
+  ],
+  "meta": {
+    "version": 1,
+    "sha": "fbf584d614b63a7ea845a6c2bcca6c09d5ebd878",
+    "builtAt": "2026-11-24T02:25:46.062Z",
+    "coverage": 1,
+    "uncovered": [],
+    "dropped": []
+  }
+}
